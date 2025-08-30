@@ -1,0 +1,35 @@
+IT Support System
+=================
+
+{{subject}}
+
+{{body}}
+
+TICKET DETAILS
+---------------
+Ticket ID: {{ticket_id}}
+Priority: {{priority}}
+Category: {{category}}
+Status: {{status}}
+
+DESCRIPTION
+-----------
+{{description}}
+
+NEXT STEPS
+----------
+If you have any questions about this ticket, please contact our IT support team.
+
+You can also:
+- View the ticket details in our system
+- Check the current status
+- Add additional information if needed
+
+---
+This is an automated message from the IT Support System.
+Please do not reply directly to this email.
+
+For support inquiries, please contact our IT team through the proper channels.
+
+{{company_name}}
+IT Support System
