@@ -1,0 +1,37 @@
+Company IT Security Policy
+Policy ID: IT-SEC-001
+Version: 1.2
+Effective Date: 2024-06-01
+Section: Security
+
+This document outlines the IT security requirements for all employees and contractors.
+
+## Password Requirements
+- Minimum 12 characters
+- Must include uppercase, lowercase, numbers, and special characters
+- Changed every 90 days
+- No reuse of last 5 passwords
+
+## Access Control
+- Principle of least privilege
+- Regular access reviews
+- Immediate deactivation upon termination
+- Multi-factor authentication required for all systems
+
+## Data Protection
+- Encryption at rest and in transit
+- Regular backups with encryption
+- Data classification and labeling
+- Secure disposal of sensitive information
+
+## Incident Response
+- Report security incidents within 1 hour
+- Contact IT security team immediately
+- Preserve evidence and logs
+- Follow incident response procedures
+
+## Compliance
+- Regular security audits
+- Employee security training
+- Policy review and updates
+- Regulatory compliance monitoring

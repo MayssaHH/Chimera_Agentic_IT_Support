@@ -1,0 +1,122 @@
+[
+  {
+    "ticket_id": "TICKET-2024-001",
+    "description": "User needs access to shared network drive for project collaboration",
+    "outcome": "approved",
+    "resolution": "Access granted to shared drive after manager approval. User added to appropriate security groups and provided access instructions.",
+    "approver_role": "IT Manager",
+    "created_date": "2024-01-15",
+    "resolved_date": "2024-01-16",
+    "category": "access",
+    "priority": "medium",
+    "tags": ["network access", "shared drive", "project collaboration"]
+  },
+  {
+    "ticket_id": "TICKET-2024-002",
+    "description": "Software installation request for Adobe Creative Suite",
+    "outcome": "denied",
+    "resolution": "Request denied due to budget constraints. Alternative open-source solutions recommended and provided.",
+    "approver_role": "Department Head",
+    "created_date": "2024-01-20",
+    "resolved_date": "2024-01-22",
+    "category": "software",
+    "priority": "low",
+    "tags": ["software installation", "adobe", "budget constraint"]
+  },
+  {
+    "ticket_id": "TICKET-2024-003",
+    "description": "Password reset for locked account due to multiple failed login attempts",
+    "outcome": "approved",
+    "resolution": "Password reset completed and user notified. Security training scheduled to prevent future lockouts.",
+    "approver_role": "IT Admin",
+    "created_date": "2024-01-25",
+    "resolved_date": "2024-01-25",
+    "category": "access",
+    "priority": "high",
+    "tags": ["password reset", "account lockout", "security training"]
+  },
+  {
+    "ticket_id": "TICKET-2024-004",
+    "description": "VPN access request for remote work during business travel",
+    "outcome": "requires_approval",
+    "resolution": "Pending manager approval for remote access. Security review required for international travel.",
+    "approver_role": "Security Officer",
+    "created_date": "2024-02-01",
+    "resolved_date": null,
+    "category": "access",
+    "priority": "medium",
+    "tags": ["vpn access", "remote work", "international travel"]
+  },
+  {
+    "ticket_id": "TICKET-2024-005",
+    "description": "Hardware replacement for broken laptop screen",
+    "outcome": "approved",
+    "resolution": "Laptop replaced with new model from inventory. Old device sent for secure disposal.",
+    "approver_role": "IT Manager",
+    "created_date": "2024-02-05",
+    "resolved_date": "2024-02-07",
+    "category": "hardware",
+    "priority": "medium",
+    "tags": ["hardware replacement", "laptop", "secure disposal"]
+  },
+  {
+    "ticket_id": "TICKET-2024-006",
+    "description": "Email configuration for new employee onboarding",
+    "outcome": "approved",
+    "resolution": "Email account created and configured. Mobile device setup completed with security policies applied.",
+    "approver_role": "IT Admin",
+    "created_date": "2024-02-10",
+    "resolved_date": "2024-02-10",
+    "category": "email",
+    "priority": "medium",
+    "tags": ["email configuration", "onboarding", "mobile setup"]
+  },
+  {
+    "ticket_id": "TICKET-2024-007",
+    "description": "Security incident report - suspicious email activity",
+    "outcome": "approved",
+    "resolution": "Phishing attempt identified and blocked. User account scanned for compromise. Security awareness training scheduled.",
+    "approver_role": "Security Officer",
+    "created_date": "2024-02-15",
+    "resolved_date": "2024-02-16",
+    "category": "security",
+    "priority": "high",
+    "tags": ["security incident", "phishing", "security training"]
+  },
+  {
+    "ticket_id": "TICKET-2024-008",
+    "description": "Printer setup for new office location",
+    "outcome": "approved",
+    "resolution": "Network printer installed and configured. User training provided on secure printing practices.",
+    "approver_role": "IT Support Lead",
+    "created_date": "2024-02-20",
+    "resolved_date": "2024-02-21",
+    "category": "printer",
+    "priority": "low",
+    "tags": ["printer setup", "network configuration", "user training"]
+  },
+  {
+    "ticket_id": "TICKET-2024-009",
+    "description": "Database access request for analytics team",
+    "outcome": "denied",
+    "resolution": "Access denied due to data sensitivity. Alternative reporting solution provided with appropriate access levels.",
+    "approver_role": "Data Protection Officer",
+    "created_date": "2024-02-25",
+    "resolved_date": "2024-02-28",
+    "category": "access",
+    "priority": "medium",
+    "tags": ["database access", "data sensitivity", "reporting solution"]
+  },
+  {
+    "ticket_id": "TICKET-2024-010",
+    "description": "Mobile device management enrollment request",
+    "outcome": "approved",
+    "resolution": "Device enrolled in MDM system. Security policies applied and user trained on compliance requirements.",
+    "approver_role": "IT Manager",
+    "created_date": "2024-03-01",
+    "resolved_date": "2024-03-02",
+    "category": "mobile",
+    "priority": "medium",
+    "tags": ["mobile device", "mdm enrollment", "security policies"]
+  }
+]

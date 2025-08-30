@@ -1,0 +1,28 @@
+# Core dependencies
+langchain>=0.1.0
+langchain-community>=0.0.10
+langchain-core>=0.1.0
+langchain-openai>=0.1.0
+langchain-text-splitters>=0.0.1
+
+# Document processing
+pypdf>=3.17.0
+docx2txt>=0.8
+unstructured>=0.11.0
+python-docx>=0.8.11
+
+# Vector stores
+chromadb>=0.4.0
+faiss-cpu>=1.7.4
+
+# Text processing
+tiktoken>=0.5.0
+
+# Configuration and utilities
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+python-dotenv>=1.0.0
+
+# Optional: for better PDF processing
+pdfplumber>=0.9.0
+pymupdf>=1.23.0

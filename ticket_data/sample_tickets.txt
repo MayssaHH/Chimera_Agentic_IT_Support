@@ -1,0 +1,89 @@
+Ticket ID: TEXT-2024-001
+User reported printer not working in office
+Outcome: approved
+Resolution: Replaced printer cartridge and restarted printer service. User trained on proper maintenance procedures.
+Approver: IT Support Lead
+Date: 2024-02-01
+Category: printer
+Priority: medium
+
+Ticket ID: TEXT-2024-002
+Request for VPN access to company network
+Outcome: requires_approval
+Resolution: Pending manager approval for remote access. Security review required for international travel.
+Approver: Security Officer
+Date: 2024-02-05
+Category: access
+Priority: high
+
+Ticket ID: TEXT-2024-003
+Hardware replacement for broken laptop
+Outcome: approved
+Resolution: Laptop replaced with new model from inventory. Old device sent for secure disposal.
+Approver: IT Manager
+Date: 2024-02-10
+Category: hardware
+Priority: medium
+
+Ticket ID: TEXT-2024-004
+Software installation request for development tools
+Outcome: approved
+Resolution: Development tools installed and configured. License keys activated and user training provided.
+Approver: Department Head
+Date: 2024-02-15
+Category: software
+Priority: medium
+
+Ticket ID: TEXT-2024-005
+Network access request for new employee
+Outcome: approved
+Resolution: Network access granted with appropriate permissions. Security policies applied and user orientation completed.
+Approver: IT Admin
+Date: 2024-02-20
+Category: access
+Priority: medium
+
+Ticket ID: TEXT-2024-006
+Email configuration for mobile device
+Outcome: approved
+Resolution: Mobile email configured with security policies. Two-factor authentication enabled and user trained.
+Approver: IT Support Lead
+Date: 2024-02-25
+Category: email
+Priority: low
+
+Ticket ID: TEXT-2024-007
+Security incident - suspicious login attempts
+Outcome: approved
+Resolution: Account locked due to suspicious activity. Security investigation completed and access restored after verification.
+Approver: Security Officer
+Date: 2024-03-01
+Category: security
+Priority: high
+
+Ticket ID: TEXT-2024-008
+Request for additional storage space
+Outcome: denied
+Resolution: Request denied due to storage quota limits. Alternative solutions provided including file cleanup recommendations.
+Approver: IT Manager
+Date: 2024-03-05
+Category: storage
+Priority: low
+
+Ticket ID: TEXT-2024-009
+Hardware upgrade for workstation
+Outcome: approved
+Resolution: Workstation upgraded with additional RAM and SSD. Performance testing completed and user satisfied.
+Approver: IT Manager
+Date: 2024-03-10
+Category: hardware
+Priority: medium
+
+Ticket ID: TEXT-2024-010
+Training request for new software
+Outcome: approved
+Resolution: Training session scheduled and materials prepared. User enrolled in online course with progress tracking.
+Approver: Training Coordinator
+Date: 2024-03-15
+Category: training
+Priority: low
