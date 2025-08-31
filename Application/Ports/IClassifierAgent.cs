@@ -1,6 +1,6 @@
 ﻿namespace Application.Ports;
-
-public class IClassifierAgent
+public interface IClassifierAgent
 {
-    
+    Task<(Decision Decision, IReadOnlyList<Citation> Citations)>
+        ClassifyAsync(string text, CancellationToken ct = default);
 }

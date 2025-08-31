@@ -1,44 +1,33 @@
+using Application.Ports;
+using Application.Ports.Persistence;
+using External;
+using Microsoft.EntityFrameworkCore;
+using Persistence;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// EF Core
+builder.Services.AddDbContext<AppDbContext>(opts =>
+    opts.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+
+// Persistence port -> Infra implementation
+builder.Services.AddScoped<ITicketRepository, EfTicketRepository>();
+
+// Agent ports -> Infra implementations (examples)
+builder.Services.AddHttpClient<IClassifierAgent, HttpClassifierAgent>(c =>
+    c.BaseAddress = new Uri(builder.Configuration["Agents:BaseUrl"]!));
+builder.Services.AddHttpClient<IPlannerAgent, HttpPlannerAgent>(c =>
+    c.BaseAddress = new Uri(builder.Configuration["Agents:BaseUrl"]!));
+// builder.Services.AddScoped<IJiraAgent, JiraAgent>();
+// builder.Services.AddScoped<IExecutorAgent, SmtpExecutorAgent>();
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-    {
-        var forecast = Enumerable.Range(1, 5).Select(index =>
-                new WeatherForecast
-                (
-                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                    Random.Shared.Next(-20, 55),
-                    summaries[Random.Shared.Next(summaries.Length)]
-                ))
-            .ToArray();
-        return forecast;
-    })
-    .WithName("GetWeatherForecast")
-    .WithOpenApi();
-
+app.UseSwagger(); app.UseSwaggerUI();
+app.MapControllers();
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
