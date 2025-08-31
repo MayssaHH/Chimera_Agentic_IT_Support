@@ -1,396 +1,333 @@
 """
 Closer Node for IT Support Workflow
 
-This node handles ticket closing based on IT agent execution outcomes:
-- If outcome is 'executed' or confirmed by employee: Jira → resolved then closed
-- If awaiting employee/manager: leave in_progress
+This node handles the final completion of IT support requests, including:
+- Satisfaction surveys
+- Final status updates
+- Ticket closure confirmation
+- Knowledge base updates
 """
 
-import logging
-from typing import Dict, Any, Optional
+import json
+import uuid
+from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
+from dataclasses import dataclass
+from enum import Enum
 
-from ..state import ITGraphState, RequestStatus
-# Mock Jira client for testing without full configuration
-class MockJiraClient:
-    def __init__(self, dry_run=False):
-        self.dry_run = dry_run
+from ..state import (
+    ITGraphState, TicketRecord, PlanRecord, DecisionRecord, DecisionType
+)
+
+
+class CompletionStatus(str, Enum):
+    """Status of request completion"""
+    COMPLETED = "completed"
+    PARTIALLY_COMPLETED = "partially_completed"
+    ESCALATED = "escalated"
+    CANCELLED = "cancelled"
+
+
+class SatisfactionLevel(str, Enum):
+    """User satisfaction levels"""
+    VERY_SATISFIED = "very_satisfied"
+    SATISFIED = "satisfied"
+    NEUTRAL = "neutral"
+    DISSATISFIED = "dissatisfied"
+    VERY_DISSATISFIED = "very_dissatisfied"
+
+
+@dataclass
+class CompletionSummary:
+    """Summary of request completion"""
+    completion_id: str
+    ticket_id: str
+    status: CompletionStatus
+    completion_date: datetime
+    resolution_summary: str
+    time_to_resolution: float  # in hours
+    steps_completed: int
+    total_steps: int
+    human_intervention_required: bool
+    escalation_reason: Optional[str]
+    knowledge_gaps: List[str]
+    improvement_suggestions: List[str]
+
+
+@dataclass
+class SatisfactionSurvey:
+    """User satisfaction survey data"""
+    survey_id: str
+    ticket_id: str
+    satisfaction_level: SatisfactionLevel
+    response_time_rating: int  # 1-5
+    solution_quality_rating: int  # 1-5
+    communication_rating: int  # 1-5
+    overall_experience_rating: int  # 1-5
+    feedback_comments: Optional[str]
+    would_recommend: bool
+    submitted_at: datetime
+
+
+class CompletionHandler:
+    """Handles request completion and closure"""
     
-    def update_ticket(self, **kwargs):
-        return {"success": True, "message": "Mock ticket updated", "dry_run": self.dry_run}
-
-# Use mock client for now - can be replaced with real client when configuration is available
-JiraClient = MockJiraClient
-
-
-logger = logging.getLogger(__name__)
-
-
-class TicketCloser:
-    """Handles ticket closing logic based on execution outcomes"""
+    def __init__(self):
+        self.completion_records = {}
+        self.satisfaction_surveys = {}
+        
+    def complete_request(self, state: ITGraphState) -> CompletionSummary:
+        """Complete the IT support request"""
+        ticket_record = state.get('ticket_record', {})
+        plan_record = state.get('plan_record', {})
+        
+        # Calculate completion metrics
+        steps_completed = self._count_completed_steps(plan_record)
+        total_steps = self._count_total_steps(plan_record)
+        time_to_resolution = self._calculate_resolution_time(ticket_record)
+        
+        # Determine completion status
+        status = self._determine_completion_status(steps_completed, total_steps, state)
+        
+        # Generate completion summary
+        completion_summary = CompletionSummary(
+            completion_id=str(uuid.uuid4()),
+            ticket_id=ticket_record.get('ticket_id', ''),
+            status=status,
+            completion_date=datetime.now(),
+            resolution_summary=self._generate_resolution_summary(state),
+            time_to_resolution=time_to_resolution,
+            steps_completed=steps_completed,
+            total_steps=total_steps,
+            human_intervention_required=self._check_human_intervention(state),
+            escalation_reason=self._get_escalation_reason(state) if status == CompletionStatus.ESCALATED else None,
+            knowledge_gaps=self._identify_knowledge_gaps(state),
+            improvement_suggestions=self._generate_improvement_suggestions(state)
+        )
+        
+        # Store completion record
+        self.completion_records[completion_summary.completion_id] = completion_summary
+        
+        return completion_summary
     
-    def __init__(self, dry_run: bool = False):
-        self.dry_run = dry_run
-        self.jira_client = JiraClient(dry_run=dry_run)
+    def _count_completed_steps(self, plan_record: Dict[str, Any]) -> int:
+        """Count completed plan steps"""
+        if not plan_record or 'steps' not in plan_record:
+            return 0
         
-    def determine_ticket_action(self, state: ITGraphState) -> Dict[str, Any]:
-        """Determine what action to take on the ticket based on IT agent outcome"""
-        try:
-            # Get IT agent outcome
-            it_outcome = state.get("it_outcome")
-            if not it_outcome:
-                logger.warning("No IT agent outcome found in state")
-                return {
-                    "action": "no_action",
-                    "reason": "No IT agent outcome available",
-                    "ticket_status": state.get("ticket_record", {}).get("status", "unknown")
-                }
-            
-            # Get current ticket status
-            ticket_record = state.get("ticket_record", {})
-            current_status = ticket_record.get("status", "unknown")
-            
-            # Determine action based on outcome
-            if it_outcome == "executed":
-                return self._handle_executed_outcome(state, current_status)
-            elif it_outcome == "awaiting_employee":
-                return self._handle_awaiting_employee_outcome(state, current_status)
-            elif it_outcome == "awaiting_manager":
-                return self._handle_awaiting_manager_outcome(state, current_status)
-            else:
-                logger.warning(f"Unknown IT agent outcome: {it_outcome}")
-                return {
-                    "action": "no_action",
-                    "reason": f"Unknown outcome: {it_outcome}",
-                    "ticket_status": current_status
-                }
-                
-        except Exception as e:
-            logger.error(f"Error determining ticket action: {e}")
-            return {
-                "action": "error",
-                "reason": f"Error: {str(e)}",
-                "ticket_status": "error"
-            }
+        completed = 0
+        for step in plan_record['steps']:
+            if step.get('status') == 'completed':
+                completed += 1
+        
+        return completed
     
-    def _handle_executed_outcome(self, state: ITGraphState, current_status: str) -> Dict[str, Any]:
-        """Handle case where all steps were executed automatically"""
-        ticket_record = state.get("ticket_record", {})
-        ticket_id = ticket_record.get("ticket_id")
+    def _count_total_steps(self, plan_record: Dict[str, Any]) -> int:
+        """Count total plan steps"""
+        if not plan_record or 'steps' not in plan_record:
+            return 0
         
-        if not ticket_id:
-            return {
-                "action": "no_action",
-                "reason": "No ticket ID available",
-                "ticket_status": current_status
-            }
-        
-        # Check if ticket is already resolved
-        if current_status == RequestStatus.RESOLVED:
-            return {
-                "action": "no_action",
-                "reason": f"Ticket already {current_status}",
-                "ticket_status": current_status
-            }
-        
-        # Resolve and close the ticket
-        resolution_comment = self._generate_resolution_comment(state)
-        
-        try:
-            # First resolve the ticket
-            resolve_result = self.jira_client.update_ticket(
-                ticket_id=ticket_id,
-                fields={"status": RequestStatus.RESOLVED},
-                comment=f"Resolved: {resolution_comment}"
-            )
-            
-            if not resolve_result.get("success", False):
-                logger.error(f"Failed to resolve ticket {ticket_id}: {resolve_result}")
-                return {
-                    "action": "error",
-                    "reason": f"Failed to resolve ticket: {resolve_result.get('error', 'Unknown error')}",
-                    "ticket_status": current_status
-                }
-            
-            # Then close the ticket
-            close_result = self.jira_client.update_ticket(
-                ticket_id=ticket_id,
-                fields={"status": RequestStatus.CLOSED},
-                comment="Ticket closed: All automated steps completed successfully"
-            )
-            
-            if not close_result.get("success", False):
-                logger.error(f"Failed to close ticket {ticket_id}: {close_result}")
-                return {
-                    "action": "resolved_only",
-                    "reason": f"Resolved but failed to close: {close_result.get('error', 'Unknown error')}",
-                    "ticket_status": RequestStatus.RESOLVED
-                }
-            
-            return {
-                "action": "closed",
-                "reason": "All automated steps completed successfully",
-                "ticket_status": RequestStatus.CLOSED,
-                "resolution_comment": resolution_comment,
-                "jira_results": {
-                    "resolve": resolve_result,
-                    "close": close_result
-                }
-            }
-            
-        except Exception as e:
-            logger.error(f"Error closing ticket {ticket_id}: {e}")
-            return {
-                "action": "error",
-                "reason": f"Error during ticket closure: {str(e)}",
-                "ticket_status": current_status
-            }
+        return len(plan_record['steps'])
     
-    def _handle_awaiting_employee_outcome(self, state: ITGraphState, current_status: str) -> Dict[str, Any]:
-        """Handle case where employee action is required"""
-        # Keep ticket in progress
-        if current_status != RequestStatus.IN_PROGRESS:
-            # Update ticket status to in_progress if not already
-            ticket_record = state.get("ticket_record", {})
-            ticket_id = ticket_record.get("ticket_id")
-            
-            if ticket_id:
-                try:
-                    update_result = self.jira_client.update_ticket(
-                        ticket_id=ticket_id,
-                        fields={"status": RequestStatus.IN_PROGRESS},
-                        comment="Status updated: Awaiting employee action"
-                    )
-                    
-                    if update_result.get("success", False):
-                        return {
-                            "action": "status_updated",
-                            "reason": "Updated to in_progress - awaiting employee action",
-                            "ticket_status": RequestStatus.IN_PROGRESS,
-                            "jira_result": update_result
-                        }
-                    else:
-                        logger.warning(f"Failed to update ticket status: {update_result}")
-                        
-                except Exception as e:
-                    logger.error(f"Error updating ticket status: {e}")
+    def _calculate_resolution_time(self, ticket_record: Dict[str, Any]) -> float:
+        """Calculate time to resolution in hours"""
+        if not ticket_record:
+            return 0.0
         
-        return {
-            "action": "maintain_status",
-            "reason": "Awaiting employee action - keeping in progress",
-            "ticket_status": RequestStatus.IN_PROGRESS
+        created_at = ticket_record.get('created_at')
+        if not created_at:
+            return 0.0
+        
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        
+        now = datetime.now()
+        if created_at.tzinfo:
+            now = now.replace(tzinfo=created_at.tzinfo)
+        
+        delta = now - created_at
+        return delta.total_seconds() / 3600  # Convert to hours
+    
+    def _determine_completion_status(self, steps_completed: int, total_steps: int, 
+                                   state: ITGraphState) -> CompletionStatus:
+        """Determine the completion status"""
+        if steps_completed == 0:
+            return CompletionStatus.CANCELLED
+        
+        if steps_completed == total_steps:
+            return CompletionStatus.COMPLETED
+        
+        # Check if escalated
+        if state.get('escalation_record'):
+            return CompletionStatus.ESCALATED
+        
+        return CompletionStatus.PARTIALLY_COMPLETED
+    
+    def _generate_resolution_summary(self, state: ITGraphState) -> str:
+        """Generate a summary of the resolution"""
+        plan_record = state.get('plan_record', {})
+        decision_record = state.get('decision_record', {})
+        
+        if decision_record.get('decision') == DecisionType.DENIED:
+            return "Request denied based on policy compliance requirements"
+        
+        if plan_record and 'steps' in plan_record:
+            completed_steps = [s for s in plan_record['steps'] if s.get('status') == 'completed']
+            if completed_steps:
+                return f"Successfully completed {len(completed_steps)} out of {len(plan_record['steps'])} planned steps"
+        
+        return "Request processed and resolved"
+    
+    def _check_human_intervention(self, state: ITGraphState) -> bool:
+        """Check if human intervention was required"""
+        return bool(state.get('hil_pending') or state.get('escalation_record'))
+    
+    def _get_escalation_reason(self, state: ITGraphState) -> Optional[str]:
+        """Get the reason for escalation if any"""
+        escalation_record = state.get('escalation_record', {})
+        return escalation_record.get('reason')
+    
+    def _identify_knowledge_gaps(self, state: ITGraphState) -> List[str]:
+        """Identify knowledge gaps that could be addressed"""
+        gaps = []
+        
+        # Check if policies were insufficient
+        retrieved_docs = state.get('retrieved_docs', [])
+        if not retrieved_docs:
+            gaps.append("No relevant policies found for request category")
+        
+        # Check if past tickets provided insufficient guidance
+        past_tickets = state.get('past_tickets_features', [])
+        if not past_tickets:
+            gaps.append("No similar past tickets for reference")
+        
+        return gaps
+    
+    def _generate_improvement_suggestions(self, state: ITGraphState) -> List[str]:
+        """Generate suggestions for process improvement"""
+        suggestions = []
+        
+        # Check response time
+        ticket_record = state.get('ticket_record', {})
+        if ticket_record:
+            time_to_resolution = self._calculate_resolution_time(ticket_record)
+            if time_to_resolution > 24:  # More than 24 hours
+                suggestions.append("Consider automation for faster response times")
+        
+        # Check human intervention
+        if self._check_human_intervention(state):
+            suggestions.append("Review process to reduce manual intervention requirements")
+        
+        # Check knowledge gaps
+        knowledge_gaps = self._identify_knowledge_gaps(state)
+        if knowledge_gaps:
+            suggestions.append("Update knowledge base with missing policies and procedures")
+        
+        return suggestions
+
+
+class SatisfactionSurveyHandler:
+    """Handles user satisfaction surveys"""
+    
+    def __init__(self):
+        self.surveys = {}
+        
+    def create_survey(self, ticket_id: str) -> Dict[str, Any]:
+        """Create a satisfaction survey for a completed ticket"""
+        survey = {
+            'survey_id': str(uuid.uuid4()),
+            'ticket_id': ticket_id,
+            'created_at': datetime.now(),
+            'status': 'pending',
+            'questions': [
+                {
+                    'id': 'overall_satisfaction',
+                    'type': 'rating',
+                    'question': 'How satisfied are you with the overall resolution?',
+                    'options': [level.value for level in SatisfactionLevel]
+                },
+                {
+                    'id': 'response_time',
+                    'type': 'rating',
+                    'question': 'How would you rate the response time?',
+                    'options': ['1', '2', '3', '4', '5']
+                },
+                {
+                    'id': 'solution_quality',
+                    'type': 'rating',
+                    'question': 'How would you rate the quality of the solution?',
+                    'options': ['1', '2', '3', '4', '5']
+                },
+                {
+                    'id': 'communication',
+                    'type': 'rating',
+                    'question': 'How would you rate the communication during the process?',
+                    'options': ['1', '2', '3', '4', '5']
+                },
+                {
+                    'id': 'recommendation',
+                    'type': 'boolean',
+                    'question': 'Would you recommend our IT support to others?',
+                    'options': ['Yes', 'No']
+                },
+                {
+                    'id': 'feedback',
+                    'type': 'text',
+                    'question': 'Any additional feedback or suggestions?',
+                    'options': []
+                }
+            ]
         }
+        
+        self.surveys[survey['survey_id']] = survey
+        return survey
     
-    def _handle_awaiting_manager_outcome(self, state: ITGraphState, current_status: str) -> Dict[str, Any]:
-        """Handle case where manager approval is required"""
-        # Keep ticket in progress
-        if current_status != RequestStatus.IN_PROGRESS:
-            # Update ticket status to in_progress if not already
-            ticket_record = state.get("ticket_record", {})
-            ticket_id = ticket_record.get("ticket_id")
-            
-            if ticket_id:
-                try:
-                    update_result = self.jira_client.update_ticket(
-                        ticket_id=ticket_id,
-                        fields={"status": RequestStatus.IN_PROGRESS},
-                        comment="Status updated: Awaiting manager approval"
-                    )
-                    
-                    if update_result.get("success", False):
-                        return {
-                            "action": "status_updated",
-                            "reason": "Updated to in_progress - awaiting manager approval",
-                            "ticket_status": RequestStatus.IN_PROGRESS,
-                            "jira_result": update_result
-                        }
-                    else:
-                        logger.warning(f"Failed to update ticket status: {update_result}")
-                        
-                except Exception as e:
-                    logger.error(f"Error updating ticket status: {e}")
+    def submit_survey(self, survey_id: str, responses: Dict[str, Any]) -> SatisfactionSurvey:
+        """Submit a completed satisfaction survey"""
+        survey = self.surveys.get(survey_id)
+        if not survey:
+            raise ValueError(f"Survey {survey_id} not found")
         
-        return {
-            "action": "maintain_status",
-            "reason": "Awaiting manager approval - keeping in progress",
-            "ticket_status": RequestStatus.IN_PROGRESS
-        }
-    
-    def _generate_resolution_comment(self, state: ITGraphState) -> str:
-        """Generate a resolution comment based on the execution results"""
-        execution_results = state.get("execution_results", [])
-        user_request = state.get("user_request", {})
-        request_title = user_request.get("title", "IT support request")
+        # Create satisfaction survey record
+        satisfaction_survey = SatisfactionSurvey(
+            survey_id=survey_id,
+            ticket_id=survey['ticket_id'],
+            satisfaction_level=SatisfactionLevel(responses.get('overall_satisfaction', 'neutral')),
+            response_time_rating=int(responses.get('response_time', 3)),
+            solution_quality_rating=int(responses.get('solution_quality', 3)),
+            communication_rating=int(responses.get('communication', 3)),
+            overall_experience_rating=int(responses.get('overall_satisfaction', 3)),
+            feedback_comments=responses.get('feedback'),
+            would_recommend=responses.get('recommendation', 'Yes') == 'Yes',
+            submitted_at=datetime.now()
+        )
         
-        if not execution_results:
-            return f"Request '{request_title}' completed successfully"
+        # Store the survey response
+        self.satisfaction_surveys[survey_id] = satisfaction_survey
         
-        successful_actions = [r for r in execution_results if r.get("success", False)]
-        action_count = len(successful_actions)
+        # Update survey status
+        survey['status'] = 'completed'
+        survey['responses'] = responses
         
-        if action_count == 0:
-            return f"Request '{request_title}' completed (no automated actions required)"
-        elif action_count == 1:
-            return f"Request '{request_title}' completed successfully with 1 automated action"
-        else:
-            return f"Request '{request_title}' completed successfully with {action_count} automated actions"
-    
-    def close_ticket(self, state: ITGraphState) -> ITGraphState:
-        """Execute the ticket closing action and update state"""
-        try:
-            # Determine what action to take
-            action_result = self.determine_ticket_action(state)
-            
-            # Add closing result to state
-            if "closing_results" not in state:
-                state["closing_results"] = []
-            state["closing_results"].append({
-                "timestamp": datetime.now().isoformat(),
-                "action": action_result["action"],
-                "reason": action_result["reason"],
-                "ticket_status": action_result["ticket_status"],
-                "details": action_result
-            })
-            
-            # Update ticket record status if changed
-            if "ticket_record" in state and action_result["ticket_status"] != "error":
-                state["ticket_record"]["status"] = action_result["ticket_status"]
-                state["ticket_record"]["updated_at"] = datetime.now()
-                
-                # Add resolution details if ticket was closed
-                if action_result["action"] == "closed":
-                    state["ticket_record"]["resolution"] = action_result["reason"]
-                    state["ticket_record"]["resolution_date"] = datetime.now()
-            
-            # Add closing metadata
-            if "metadata" not in state:
-                state["metadata"] = {}
-            state["metadata"]["ticket_closing"] = {
-                "action": action_result["action"],
-                "timestamp": datetime.now().isoformat(),
-                "final_status": action_result["ticket_status"],
-                "closing_reason": action_result["reason"]
-            }
-            
-            return state
-            
-        except Exception as e:
-            logger.error(f"Error in ticket closing: {e}")
-            
-            # Add error to state
-            if "errors" not in state:
-                state["errors"] = []
-            state["errors"].append({
-                "error_id": f"closer_error_{datetime.now().timestamp()}",
-                "timestamp": datetime.now(),
-                "error_type": "ticket_closing_error",
-                "message": str(e),
-                "severity": "high",
-                "resolved": False
-            })
-            
-            return state
+        return satisfaction_survey
 
 
-def closer_node(state: ITGraphState) -> ITGraphState:
-    """
-    Closer node: handles ticket closing based on IT agent outcome
+def close_request(state: ITGraphState) -> Dict[str, Any]:
+    """Main function to close an IT support request"""
+    completion_handler = CompletionHandler()
+    survey_handler = SatisfactionSurveyHandler()
     
-    Args:
-        state: Current workflow state with IT agent outcome
-        
-    Returns:
-        Updated state with closing results and final ticket status
-    """
-    try:
-        # Initialize ticket closer
-        closer = TicketCloser(dry_run=False)  # Set to True for testing
-        
-        # Execute ticket closing
-        updated_state = closer.close_ticket(state)
-        
-        return updated_state
-        
-    except Exception as e:
-        logger.error(f"Error in closer node: {e}")
-        
-        # Add error to state
-        if "errors" not in state:
-            state["errors"] = []
-        state["errors"].append({
-            "error_id": f"closer_node_error_{datetime.now().timestamp()}",
-            "timestamp": datetime.now(),
-            "error_type": "closer_node_error",
-            "message": str(e),
-            "severity": "high",
-            "resolved": False
-        })
-        
-        return state
-
-
-# Convenience functions for testing and direct usage
-def test_closer_node():
-    """Test function for the closer node"""
+    # Complete the request
+    completion_summary = completion_handler.complete_request(state)
     
-    # Test 1: Executed outcome
-    print("=== Testing EXECUTED outcome ===")
-    executed_state = {
-        "it_outcome": "executed",
-        "ticket_record": {
-            "ticket_id": "IT-1001",
-            "status": "in_progress"
-        },
-        "user_request": {
-            "title": "Software Installation Request"
-        },
-        "execution_results": [
-            {"success": True, "action_id": "step_1"},
-            {"success": True, "action_id": "step_2"}
-        ]
+    # Create satisfaction survey if completed successfully
+    survey = None
+    if completion_summary.status == CompletionStatus.COMPLETED:
+        survey = survey_handler.create_survey(completion_summary.ticket_id)
+    
+    return {
+        'completion_summary': completion_summary,
+        'satisfaction_survey': survey,
+        'status': 'closed',
+        'closed_at': datetime.now().isoformat()
     }
-    
-    result = closer_node(executed_state)
-    print(f"Action: {result.get('closing_results', [{}])[-1].get('action')}")
-    print(f"Final Status: {result.get('ticket_record', {}).get('status')}")
-    
-    # Test 2: Awaiting employee outcome
-    print("\n=== Testing AWAITING_EMPLOYEE outcome ===")
-    awaiting_employee_state = {
-        "it_outcome": "awaiting_employee",
-        "ticket_record": {
-            "ticket_id": "IT-1002",
-            "status": "waiting_for_user"
-        },
-        "user_request": {
-            "title": "Access Request"
-        }
-    }
-    
-    result = closer_node(awaiting_employee_state)
-    print(f"Action: {result.get('closing_results', [{}])[-1].get('action')}")
-    print(f"Final Status: {result.get('ticket_record', {}).get('status')}")
-    
-    # Test 3: Awaiting manager outcome
-    print("\n=== Testing AWAITING_MANAGER outcome ===")
-    awaiting_manager_state = {
-        "it_outcome": "awaiting_manager",
-        "ticket_record": {
-            "ticket_id": "IT-1003",
-            "status": "waiting_for_approval"
-        },
-        "user_request": {
-            "title": "Admin Access Request"
-        }
-    }
-    
-    result = closer_node(awaiting_manager_state)
-    print(f"Action: {result.get('closing_results', [{}])[-1].get('action')}")
-    print(f"Final Status: {result.get('ticket_record', {}).get('status')}")
-    
-    return result
-
-
-if __name__ == "__main__":
-    # Run test if executed directly
-    test_closer_node()

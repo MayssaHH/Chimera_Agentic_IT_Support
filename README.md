@@ -153,45 +153,6 @@ else:
 4. **Status Updates**: Updates ticket status based on remaining actions
 5. **Outcome Determination**: Returns the appropriate execution outcome
 
-## Closer Node
-
-The Closer node (`src/graph/nodes/closer.py`) handles ticket lifecycle management based on IT agent execution outcomes.
-
-### Features
-
-- **Smart Ticket Closing**: Automatically resolves and closes tickets when all steps are executed
-- **Status Management**: Maintains appropriate ticket status based on pending actions
-- **JIRA Integration**: Updates ticket status and adds resolution comments
-- **Outcome-Based Logic**: Different behavior for each IT agent outcome type
-
-### Ticket Lifecycle Rules
-
-- **`executed`**: Ticket → resolved → closed (all automated steps completed)
-- **`awaiting_employee`**: Ticket → in_progress (waiting for employee action)
-- **`awaiting_manager`**: Ticket → in_progress (waiting for manager approval)
-
-### Usage
-
-```python
-from src.graph.nodes.closer import closer_node
-
-# Close ticket based on IT agent outcome
-result_state = closer_node(workflow_state)
-
-# Check closing results
-closing_result = result_state.get("closing_results", [{}])[-1]
-print(f"Action: {closing_result['action']}")
-print(f"Final Status: {closing_result['ticket_status']}")
-```
-
-### Execution Flow
-
-1. **Outcome Analysis**: Examines IT agent execution outcome
-2. **Status Determination**: Decides appropriate ticket action
-3. **JIRA Updates**: Updates ticket status and adds comments
-4. **State Updates**: Records closing results and metadata
-5. **Lifecycle Management**: Manages ticket through resolve → close workflow
-
 ## API Endpoints
 
 Once running, the API will be available at `http://localhost:8000`
