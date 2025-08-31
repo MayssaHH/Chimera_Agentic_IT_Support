@@ -118,7 +118,7 @@ export default function LogsPage() {
           </div>
           <div className="header-actions">
             <button className="ghost-btn" onClick={() => router.push('/tickets')}>Open Tickets →</button>
-            <button className="ghost-btn" onClick={() => router.push('/')}>Back to SOC</button>
+            <button className="ghost-btn" onClick={() => router.push('/request')}>Back to Request</button>
           </div>
         </div>
 
