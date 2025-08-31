@@ -6,6 +6,7 @@ from . import (
     hil,
     it_agent,
     jira_agent,
+    planner,
     retrieve,
     router
 )
@@ -16,6 +17,7 @@ __all__ = [
     "hil", 
     "it_agent",
     "jira_agent",
+    "planner",
     "retrieve",
     "router"
 ]

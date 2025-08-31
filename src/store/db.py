@@ -29,12 +29,21 @@ class Plan(SQLModel, table=True):
     """Plan table for storing AI-generated action plans."""
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    plan_id: str = Field(unique=True, index=True, description="Unique plan identifier")
     ticket_id: str = Field(index=True)
+    request_id: str = Field(index=True, description="Related request ID")
     plan_title: str
     plan_description: str
-    steps: str = Field(description="JSON string of plan steps")
+    request_summary: str
+    classification: str = Field(description="ALLOWED, DENIED, REQUIRES_APPROVAL")
     priority: str = Field(default="medium", description="low, medium, high, critical")
-    estimated_duration: int = Field(description="Estimated duration in minutes")
+    estimated_duration: float = Field(description="Estimated duration in hours")
+    steps: str = Field(description="JSON string of plan steps")
+    approval_workflow: str = Field(description="JSON string of approval workflow")
+    email_draft: str = Field(description="JSON string of email draft")
+    risk_assessment: str = Field(description="JSON string of risk assessment")
+    compliance_checklist: str = Field(description="JSON string of compliance checklist")
+    success_criteria: str = Field(description="JSON string of success criteria")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     created_by: str = Field(description="Employee ID who created the plan")
@@ -127,6 +136,32 @@ def save_plan(plan: Plan) -> Plan:
         session.commit()
         session.refresh(plan)
         return plan
+
+
+def save_plan_from_record(plan_record: Dict[str, Any], ticket_id: str, request_id: str, created_by: str) -> Plan:
+    """Save a plan from PlanRecord dictionary to the database."""
+    import json
+    
+    plan = Plan(
+        plan_id=plan_record.get('plan_id', f"plan_{uuid.uuid4().hex[:8].upper()}"),
+        ticket_id=ticket_id,
+        request_id=request_id,
+        plan_title=plan_record.get('request_summary', ''),
+        plan_description=plan_record.get('description', ''),
+        request_summary=plan_record.get('request_summary', ''),
+        classification=plan_record.get('classification', 'REQUIRES_APPROVAL'),
+        priority=plan_record.get('priority', 'medium'),
+        estimated_duration=plan_record.get('estimated_duration', 0.0),
+        steps=json.dumps(plan_record.get('steps', [])),
+        approval_workflow=json.dumps(plan_record.get('approval_workflow', {})),
+        email_draft=json.dumps(plan_record.get('email_draft', {})),
+        risk_assessment=json.dumps(plan_record.get('risk_assessment', {})),
+        compliance_checklist=json.dumps(plan_record.get('compliance_checklist', [])),
+        success_criteria=json.dumps(plan_record.get('success_criteria', [])),
+        created_by=created_by
+    )
+    
+    return save_plan(plan)
 
 
 def save_ticket(ticket: Ticket) -> Ticket:
