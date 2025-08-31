@@ -74,8 +74,8 @@ export default function TicketsPage() {
       <div className="container">
         <div className="page-header">
           <div className="header-content">
-            <h1 className="page-title">Support Tickets</h1>
-            <p className="page-subtitle">Manage and track all security incidents and requests</p>
+            <h1 className="page-title">Your Tickets</h1>
+            <p className="page-subtitle">Your IT Support Website</p>
             <p className="page-tagline">Fast triage with <span className="tag-strong">clear signals</span></p>
           </div>
           <div className="header-actions">

@@ -70,9 +70,9 @@ export default function HomePage() {
       <div className="container">
         <div className="page-header">
           <div className="header-content">
-            <h1 className="page-title">Security Operations Center</h1>
-            <p className="page-subtitle">Advanced threat detection and incident response platform</p>
-            <p className="page-tagline">Cybersecurity that <span className="tag-strong">speaks your language</span></p>
+            <h1 className="page-title">Welcome, Have Any IT Probmlem?</h1>
+            <p className="page-subtitle">Your IT Support Website</p>
+            <p className="page-tagline">Chimera: Cybersecurity that <span className="tag-strong">speaks your language</span></p>
           </div>
         </div>
 
@@ -139,7 +139,7 @@ export default function HomePage() {
 
           <aside className="panel">
             <div className="tickets-head">
-              <h2 className="section-title"><span className="bullet">◆</span> Support Tickets</h2>
+              <h2 className="section-title"><span className="bullet">◆</span> Your Tickets</h2>
               <button className="ghost-btn" onClick={goToTickets}>Open full list</button>
             </div>
             <div className="tickets-list">

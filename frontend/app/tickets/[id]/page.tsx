@@ -112,7 +112,7 @@ export default function LogsPage() {
       <div className="container">
         <div className="page-header">
           <div className="header-content">
-            <h1 className="page-title">Security Logs</h1>
+            <h1 className="page-title">Ticket's Logs</h1>
             <p className="page-subtitle">Unified view of events across gateways, IDS/IPS, EDR, and apps</p>
             <p className="page-tagline">Real-time telemetry with <span className="tag-strong">precision filtering</span></p>
           </div>
