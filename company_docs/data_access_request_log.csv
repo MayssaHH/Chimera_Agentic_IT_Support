@@ -1,0 +1,4 @@
+request_id,employee_id,dataset,decision,approver_role,date,citation
+TCK-1001,E-1452,Sales_2024_Q3,requires_approval,Sales Manager,2025-08-28,Data Access Policy v2.1 §4.2
+TCK-1002,E-2017,HR_Salaries,denied,HR Director,2025-08-28,Confidential Data Handling §3.1
+TCK-1003,E-3120,Product_Analytics,allowed,Analytics Lead,2025-08-29,Data Access Policy v2.1 §2.3

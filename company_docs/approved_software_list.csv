@@ -1,0 +1,6 @@
+software_name,version,publisher,category,approved_by_role,approval_required,notes
+Microsoft Office 365,2407,Microsoft,Productivity,CIO,False,Auto-updates enabled via Intune
+Visual Studio Code,1.92,Microsoft,Developer Tools,IT Security,False,Extensions restricted by allowlist
+Slack,4.40,Slack Technologies,Collaboration,CIO,True,Enterprise Grid; SSO mandatory
+Docker Desktop,4.33,Docker Inc.,Developer Tools,IT Security,True,Local admin rights needed; only on engineering devices
+Zoom,6.0,Zoom Video Communications,Collaboration,IT Security,False,Company SSO enforced
