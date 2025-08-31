@@ -11,32 +11,45 @@ type Props = {
 };
 
 export default function NavBar({
-  role = 'Administrator',
+  role = 'User',
   titleText = 'Chimera Cybersecurity',
   disableHomeNav = false,
 }: Props) {
   const router = useRouter();
-  const [username, setUsername] = useState('Administrator');
+  const [username, setUsername] = useState<string | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('chimera_name');
-    if (saved) setUsername(saved);
+    const loadName = () => {
+      const saved = localStorage.getItem('chimera_name');
+      setUsername(saved || 'Administrator');
+    };
+
+    loadName(); // initial read
+    // 👂 update when login page dispatches the event
+    window.addEventListener('storage', loadName);
+    return () => window.removeEventListener('storage', loadName);
   }, []);
-  useEffect(() => {
-    localStorage.setItem('chimera_name', username);
-  }, [username]);
 
   const goHome = () => { if (!disableHomeNav) router.push('/'); };
 
   return (
     <nav className="soc-nav">
-      <div className={`soc-logo ${disableHomeNav ? 'soc-logo--disabled' : ''}`} onClick={goHome}>
+      <div
+        className={`soc-logo ${disableHomeNav ? 'soc-logo--disabled' : ''}`}
+        onClick={goHome}
+      >
         <Image src="/chimera.png" alt="Chimera Logo" width={40} height={40} className="soc-logo-img" />
         {titleText}
       </div>
+
       <div className="soc-spacer" />
+
       <div className="soc-right">
-        <span className="soc-welcome">Welcome back, <strong>{username}</strong></span>
+        {username && (
+          <span className="soc-welcome">
+            Welcome back, <strong>{username}</strong>
+          </span>
+        )}
         {role && <span className="soc-role">{role}</span>}
       </div>
 

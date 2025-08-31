@@ -12,10 +12,17 @@ export default function LoginPage() {
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
 
+    // accept anything (demo)
     const displayName = name.trim() || email.split('@')[0] || 'User';
+
+    // save & cookie
     localStorage.setItem('chimera_name', displayName);
     document.cookie = `chimera_user=${encodeURIComponent(displayName)}; path=/; max-age=31536000`;
 
+    // 🔥 trigger listeners (NavBar) to update immediately
+    window.dispatchEvent(new Event('storage'));
+
+    // go to the form page
     router.replace('/request');
   }
 
@@ -51,10 +58,7 @@ export default function LoginPage() {
             required
           />
 
-          {/* 👇 Explicit Log in button */}
-          <button type="submit" className="primary-btn">
-            Log in
-          </button>
+          <button type="submit" className="primary-btn">Log in</button>
         </form>
       </div>
 
@@ -64,8 +68,7 @@ export default function LoginPage() {
         .auth{min-height:100vh;display:grid;place-items:center}
         .box{
           width:100%;max-width:420px;background:#0b0b0b;border:1px solid var(--cyan);
-          border-radius:14px;padding:1.25rem;
-          box-shadow:0 8px 28px -18px rgba(0,229,168,.35)
+          border-radius:14px;padding:1.25rem;box-shadow:0 8px 28px -18px rgba(0,229,168,.35)
         }
         .title{color:var(--cyan);text-align:center;margin:0 0 1rem}
         .form{display:grid;gap:.7rem}
@@ -74,21 +77,11 @@ export default function LoginPage() {
           background:#000;border:1px solid var(--cyan);border-radius:10px;color:#fff;padding:.8rem 1rem
         }
         input:focus{outline:none;box-shadow:0 0 0 2px rgba(0,229,168,.35)}
-      .primary-btn {
-        margin-top:.8rem;
-        display:inline-flex;
-        align-items:center;
-        justify-content:center;
-        height:46px;
-        width:100%;
-        border-radius:12px;
-        background:#000; /* dark button background */
-        color:var(--cyan); /* cyan text */
-        border:1px solid var(--cyan);
-        font-weight:800;
-        cursor:pointer;
-      }
-
+        .primary-btn{
+          margin-top:.8rem;display:inline-flex;align-items:center;justify-content:center;height:46px;width:100%;
+          border-radius:12px;background:linear-gradient(90deg,var(--cyan),var(--cyan2));
+          color:#0ff5d4;border:1px solid var(--cyan);font-weight:800;cursor:pointer
+        }
       `}</style>
     </div>
   );
