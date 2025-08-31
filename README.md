@@ -2,6 +2,8 @@
 
 A local IT support system with AI capabilities built using LangGraph, LangChain, and FastAPI.
 
+![Graph](src/graph/Graph.png)
+
 ## Features
 
 - AI-powered IT support using local LLMs (Ollama)
@@ -168,6 +170,8 @@ Once running, the API will be available at `http://localhost:8000`
 4. Run tests: `make test`
 5. Format code: `make format`
 6. Submit a pull request
+
+
 
 ## License
 
