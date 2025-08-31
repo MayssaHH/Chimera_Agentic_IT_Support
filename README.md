@@ -157,7 +157,7 @@ else:
 
 ## API Endpoints
 
-Once running, the API will be available at `http://localhost:8000`
+Once running, the API will be available at `http://localhost:8002`
 
 - `/docs` - Interactive API documentation (Swagger UI)
 - `/redoc` - Alternative API documentation
