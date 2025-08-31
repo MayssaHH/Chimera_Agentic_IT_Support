@@ -6,7 +6,7 @@ namespace Persistence;
 public class AppDbContext : DbContext
 {
     public DbSet<Ticket> Tickets => Set<Ticket>();
-    public AppDbContext(DbContextOptions<AppDbContext> o) : base(o) {}
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder b)
     {

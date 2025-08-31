@@ -1,6 +1,4 @@
-﻿using Application.Ports.Persistence;
-
-namespace Application.UseCases.HandleEmployeeRequest;
+﻿namespace Application.UseCases.HandleEmployeeRequest;
 using Application.Ports;
 using Application.Ports;
 using Domain.Tickets;
@@ -9,9 +7,10 @@ using MediatR;
 
 public sealed record HandleEmployeeRequestCommand(
     string EmployeeEmail,
-    string Text,
-    string Priority = "normal"
+    string Title,
+    string Description
 ) : IRequest<AgentResponse>;
+
 
 public sealed record AgentResponse(
     Guid TicketId,

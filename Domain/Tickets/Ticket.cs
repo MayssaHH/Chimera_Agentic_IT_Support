@@ -8,6 +8,8 @@ public sealed class Ticket
     public string RequesterEmail { get; private set; }
     public TicketStatus Status { get; private set; } = TicketStatus.New;
     public string Priority { get; private set; } = "normal";   // low|normal|high
+    public void SetPriority(string priority) => Priority = priority;
+
     public string? JiraKey { get; private set; }
 
     private readonly List<TicketHistoryEntry> _history = new();

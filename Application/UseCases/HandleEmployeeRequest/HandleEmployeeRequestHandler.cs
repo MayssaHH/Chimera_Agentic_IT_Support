@@ -1,10 +1,9 @@
-﻿using Application.Ports;
+﻿using Application.Ports; 
 using Application.Ports.Persistence;
 using Domain.Tickets;
 using MediatR;
 
 namespace Application.UseCases.HandleEmployeeRequest;
-
 
 public sealed class HandleEmployeeRequestHandler
     : IRequestHandler<HandleEmployeeRequestCommand, AgentResponse>
@@ -28,17 +27,33 @@ public sealed class HandleEmployeeRequestHandler
 
     public async Task<AgentResponse> Handle(HandleEmployeeRequestCommand req, CancellationToken ct)
     {
-        var ticket = Ticket.Create("Employee Support Request", req.Text, req.EmployeeEmail, req.Priority);
+        // 1) Create domain aggregate
+        var ticket = Ticket.Create(req.Title, req.Description, req.EmployeeEmail);
         ticket.MarkInProgress();
         await _tickets.AddAsync(ticket, ct);
         await _tickets.SaveAsync(ct);
 
-        var (decision, cites1) = await _classifier.ClassifyAsync(req.Text, ct);
-        var (steps,   cites2) = await _planner.PlanAsync(req.Text, ct);
+        // 2) Ask agents (use Description as the problem text)
+        var (decision, cites1) = await _classifier.ClassifyAsync(req.Description, ct);
+        var (steps,   cites2) = await _planner.PlanAsync(req.Description, ct);
 
-        var jiraKey = await _jira.CreateOrAttachAsync(ticket.Title, ticket.Description, req.Priority, ct);
+        // 3) Decide priority from the decision (simple rule; tweak as you like)
+        var computedPriority = decision switch
+        {
+            Decision.Allowed           => "normal",
+            Decision.Denied            => "low",
+            Decision.RequiresApproval  => "high",
+            _                          => "normal"
+        };
+
+        // If your Ticket has SetPriority(string) (recommended), set it:
+        // ticket.SetPriority(computedPriority);
+
+        // 4) Mirror to Jira
+        var jiraKey = await _jira.CreateOrAttachAsync(ticket.Title, ticket.Description, computedPriority, ct);
         ticket.AttachJira(jiraKey);
 
+        // 5) Act based on decision
         switch (decision)
         {
             case Decision.Allowed:
@@ -55,11 +70,14 @@ public sealed class HandleEmployeeRequestHandler
 
             case Decision.RequiresApproval:
                 await _exec.NotifyApprovalAsync("approver@company.com", jiraKey, ticket.Title, ct);
+                // keep InProgress until approval webhook
                 break;
         }
 
+        // 6) Persist & return
         await _tickets.SaveAsync(ct);
         var citations = cites1.Concat(cites2).ToList();
+
         return new AgentResponse(ticket.Id, jiraKey, decision, steps, citations);
     }
 }
