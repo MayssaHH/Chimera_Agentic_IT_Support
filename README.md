@@ -169,7 +169,7 @@ Once running, the API will be available at `http://localhost:8000`
 5. Format code: `make format`
 6. Submit a pull request
 
-![Graph](src/graph/Graph .png)
+![Graph](src/graph/Graph.png)
 
 ## License
 
