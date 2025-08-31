@@ -23,7 +23,7 @@ A local IT support system with AI capabilities built using LangGraph, LangChain,
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/MayssaHH/Chimera_Agentic_IT_Support.git
    cd local-it-support
    ```
 
