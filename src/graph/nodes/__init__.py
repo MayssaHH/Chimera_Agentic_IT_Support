@@ -2,6 +2,7 @@
 
 from . import (
     classifier,
+    closer,
     hil,
     it_agent,
     jira_agent,
@@ -11,6 +12,7 @@ from . import (
 
 __all__ = [
     "classifier",
+    "closer",
     "hil", 
     "it_agent",
     "jira_agent",

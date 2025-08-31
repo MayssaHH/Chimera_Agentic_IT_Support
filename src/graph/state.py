@@ -20,6 +20,7 @@ class RequestStatus(str, Enum):
     WAITING_FOR_USER = "waiting_for_user"
     WAITING_FOR_APPROVAL = "waiting_for_approval"
     RESOLVED = "resolved"
+    CLOSED = "closed"
     DENIED = "denied"
     ESCALATED = "escalated"
     ERROR = "error"
