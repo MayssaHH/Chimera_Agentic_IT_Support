@@ -65,90 +65,233 @@ class JiraClient:
     
     def __init__(self, jira_config: Dict[str, Any] = None):
         self.config = jira_config or {}
-        self.mock_tickets = {}  # For testing without real Jira
-        self.ticket_counter = 1000
+        if not self.config.get('base_url') or not self.config.get('user') or not self.config.get('token'):
+            raise Exception("❌ JIRA CREDENTIALS REQUIRED! NO MOCKS ALLOWED!")
+        # NO MOCK TICKETS - REAL JIRA ONLY!
         
     def create_ticket(self, ticket_data: JiraTicketData) -> str:
         """Create a new Jira ticket"""
-        if self.config.get('use_mock', True):
-            # Mock implementation for testing
-            ticket_id = f"IT-{self.ticket_counter}"
-            self.ticket_counter += 1
+        print(f"\n🔧 JIRA CLIENT: Creating REAL JIRA ticket:")
+        print(f"  - Summary: {ticket_data.summary}")
+        print(f"  - Issue Type: {ticket_data.issue_type}")
+        print(f"  - Priority: {ticket_data.priority}")
+        print(f"  - Components: {ticket_data.components}")
+        print(f"  - Labels: {ticket_data.labels}")
+        print(f"  - JIRA URL: {self.config['base_url']}")
+        
+        # REAL JIRA API CALL - NO MOCKS!
+        try:
+            import requests
+            from requests.auth import HTTPBasicAuth
             
-            mock_ticket = {
-                'id': ticket_id,
-                'key': ticket_id,
-                'summary': ticket_data.summary,
-                'description': ticket_data.description,
-                'status': JiraStatus.NEW,
-                'priority': ticket_data.priority,
-                'assignee': ticket_data.assignee,
-                'components': ticket_data.components,
-                'labels': ticket_data.labels,
-                'created_at': datetime.now(),
-                'updated_at': datetime.now()
+            # Prepare JIRA API payload
+            payload = {
+                "fields": {
+                    "project": {"key": self.config['project_key']},
+                    "summary": ticket_data.summary,
+                    "description": {
+                        "type": "doc",
+                        "version": 1,
+                        "content": [
+                            {
+                                "type": "paragraph",
+                                "content": [{"type": "text", "text": ticket_data.description}]
+                            }
+                        ]
+                    },
+                    "issuetype": {"name": ticket_data.issue_type},
+                    "priority": {"name": ticket_data.priority},
+                    "components": [{"name": comp} for comp in ticket_data.components],
+                    "labels": ticket_data.labels
+                }
             }
             
-            self.mock_tickets[ticket_id] = mock_ticket
-            return ticket_id
-        else:
-            # Real Jira API implementation
-            # This would call the actual Jira REST API
-            pass
+            if ticket_data.assignee:
+                payload["fields"]["assignee"] = {"name": ticket_data.assignee}
+            
+            # Make API call to JIRA
+            url = f"{self.config['base_url']}/rest/api/3/issue"
+            auth = HTTPBasicAuth(self.config['user'], self.config['token'])
+            headers = {"Accept": "application/json", "Content-Type": "application/json"}
+            
+            print(f"🔧 JIRA CLIENT: Making API call to {url}")
+            response = requests.post(url, json=payload, auth=auth, headers=headers)
+            
+            if response.status_code == 201:
+                ticket_data = response.json()
+                ticket_id = ticket_data['key']
+                print(f"🔧 JIRA CLIENT: REAL JIRA ticket created: {ticket_id}")
+                return ticket_id
+            else:
+                raise Exception(f"JIRA API failed: {response.status_code} - {response.text}")
+                
+        except Exception as e:
+            print(f"❌ JIRA API ERROR: {e}")
+            raise Exception(f"Failed to create JIRA ticket: {e}")
     
     def transition_ticket(self, transition_data: JiraTransitionData) -> bool:
         """Transition ticket to new status"""
-        if self.config.get('use_mock', True):
-            # Mock implementation
-            ticket_id = transition_data.ticket_id
-            if ticket_id in self.mock_tickets:
-                ticket = self.mock_tickets[ticket_id]
-                
-                # Update status based on transition
-                if transition_data.transition_name == JiraTransition.START_PROGRESS:
-                    ticket['status'] = JiraStatus.IN_PROGRESS
-                elif transition_data.transition_name == JiraTransition.CLOSE:
-                    ticket['status'] = JiraStatus.CLOSED
-                elif transition_data.transition_name == JiraTransition.APPROVE:
-                    ticket['status'] = JiraStatus.IN_PROGRESS
-                
-                # Update assignee if provided
-                if transition_data.assignee:
-                    ticket['assignee'] = transition_data.assignee
-                
-                ticket['updated_at'] = datetime.now()
-                return True
-            
-            return False
+        # NO MOCKS ALLOWED - REAL JIRA ONLY!
+        if not self.config.get('base_url') or not self.config.get('user') or not self.config.get('token'):
+            raise Exception("❌ JIRA CREDENTIALS REQUIRED! NO MOCKS ALLOWED!")
         else:
             # Real Jira API implementation
-            pass
+            try:
+                import requests
+                from requests.auth import HTTPBasicAuth
+                
+                # Get available transitions for the ticket
+                transitions_url = f"{self.config['base_url']}/rest/api/3/issue/{transition_data.ticket_id}/transitions"
+                auth = HTTPBasicAuth(self.config['user'], self.config['token'])
+                headers = {"Accept": "application/json"}
+                
+                transitions_response = requests.get(transitions_url, auth=auth, headers=headers)
+                
+                if transitions_response.status_code == 200:
+                    transitions_data = transitions_response.json()
+                    
+                    # Find the target transition
+                    target_transition = None
+                    for transition in transitions_data['transitions']:
+                        if transition['name'] == transition_data.transition_name:
+                            target_transition = transition
+                            break
+                    
+                    if target_transition:
+                        # Execute the transition
+                        transition_payload = {
+                            "transition": {"id": target_transition['id']}
+                        }
+                        
+                        if transition_data.comment:
+                            transition_payload["update"] = {
+                                "comment": [
+                                    {
+                                        "add": {
+                                            "body": {
+                                                "type": "doc",
+                                                "version": 1,
+                                                "content": [
+                                                    {
+                                                        "type": "paragraph",
+                                                        "content": [
+                                                            {
+                                                                "type": "text",
+                                                                "text": transition_data.comment
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        
+                        transition_url = f"{self.config['base_url']}/rest/api/3/issue/{transition_data.ticket_id}/transitions"
+                        transition_response = requests.post(
+                            transition_url, 
+                            json=transition_payload, 
+                            auth=auth, 
+                            headers={"Accept": "application/json", "Content-Type": "application/json"}
+                        )
+                        
+                        if transition_response.status_code == 204:
+                            return True
+                        else:
+                            raise Exception(f"Transition failed: {transition_response.status_code} - {transition_response.text}")
+                    else:
+                        raise Exception(f"Transition '{transition_data.transition_name}' not available")
+                else:
+                    raise Exception(f"Failed to get transitions: {transitions_response.status_code} - {transitions_response.text}")
+                    
+            except Exception as e:
+                # NO MOCKS ALLOWED - FAIL FAST!
+                print(f"❌ JIRA API FAILED: {e}")
+                raise Exception(f"JIRA API failed - NO MOCK FALLBACK ALLOWED: {e}")
     
     def get_ticket(self, ticket_id: str) -> Optional[Dict[str, Any]]:
         """Get ticket details"""
-        if self.config.get('use_mock', True):
-            return self.mock_tickets.get(ticket_id)
-        else:
-            # Real Jira API implementation
-            pass
+        # NO MOCKS ALLOWED - REAL JIRA ONLY!
+        if not self.config.get('base_url') or not self.config.get('user') or not self.config.get('token'):
+            raise Exception("❌ JIRA CREDENTIALS REQUIRED! NO MOCKS ALLOWED!")
+        
+        try:
+            import requests
+            from requests.auth import HTTPBasicAuth
+            
+            # Get ticket details from Jira API
+            url = f"{self.config['base_url']}/rest/api/3/issue/{ticket_id}"
+            auth = HTTPBasicAuth(self.config['user'], self.config['token'])
+            headers = {"Accept": "application/json"}
+            
+            response = requests.get(url, auth=auth, headers=headers)
+            
+            if response.status_code == 200:
+                jira_data = response.json()
+                return {
+                    'id': jira_data['id'],
+                    'key': jira_data['key'],
+                    'summary': jira_data['fields']['summary'],
+                    'description': jira_data['fields']['description'],
+                    'status': jira_data['fields']['status']['name'],
+                    'priority': jira_data['fields']['priority']['name'],
+                    'assignee': jira_data['fields'].get('assignee', {}).get('displayName'),
+                    'components': [comp['name'] for comp in jira_data['fields'].get('components', [])],
+                    'labels': jira_data['fields'].get('labels', []),
+                    'created_at': jira_data['fields']['created'],
+                    'updated_at': jira_data['fields']['updated']
+                }
+            else:
+                raise Exception(f"Failed to get ticket: {response.status_code} - {response.text}")
+                
+        except Exception as e:
+            print(f"❌ JIRA API ERROR: {e}")
+            raise Exception(f"Failed to get JIRA ticket: {e}")
     
     def add_comment(self, ticket_id: str, comment: str) -> bool:
         """Add comment to ticket"""
-        if self.config.get('use_mock', True):
-            if ticket_id in self.mock_tickets:
-                ticket = self.mock_tickets[ticket_id]
-                if 'comments' not in ticket:
-                    ticket['comments'] = []
-                ticket['comments'].append({
-                    'text': comment,
-                    'author': 'system',
-                    'timestamp': datetime.now()
-                })
+        # NO MOCKS ALLOWED - REAL JIRA ONLY!
+        if not self.config.get('base_url') or not self.config.get('user') or not self.config.get('token'):
+            raise Exception("❌ JIRA CREDENTIALS REQUIRED! NO MOCKS ALLOWED!")
+        
+        try:
+            import requests
+            from requests.auth import HTTPBasicAuth
+            
+            # Add comment to Jira ticket
+            url = f"{self.config['base_url']}/rest/api/3/issue/{ticket_id}/comment"
+            auth = HTTPBasicAuth(self.config['user'], self.config['token'])
+            headers = {"Accept": "application/json", "Content-Type": "application/json"}
+            
+            comment_payload = {
+                "body": {
+                    "type": "doc",
+                    "version": 1,
+                    "content": [
+                        {
+                            "type": "paragraph",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": comment
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+            
+            response = requests.post(url, json=comment_payload, auth=auth, headers=headers)
+            
+            if response.status_code == 201:
                 return True
-            return False
-        else:
-            # Real Jira API implementation
-            pass
+            else:
+                raise Exception(f"Failed to add comment: {response.status_code} - {response.text}")
+                
+        except Exception as e:
+            print(f"❌ JIRA API ERROR: {e}")
+            raise Exception(f"Failed to add JIRA comment: {e}")
 
 
 class TicketDescriptionBuilder:
@@ -331,35 +474,57 @@ class JiraWorkflowManager:
         
     def process_workflow_state(self, state: ITGraphState) -> ITGraphState:
         """Process current workflow state and manage Jira ticket accordingly"""
+        print(f"\n🔧 JIRA WORKFLOW MANAGER: Processing workflow state")
+        print(f"🔧 JIRA WORKFLOW MANAGER: State keys: {list(state.keys())}")
+        print(f"🔧 JIRA WORKFLOW MANAGER: State content:")
+        for key, value in state.items():
+            if isinstance(value, dict):
+                print(f"  - {key}: {type(value).__name__} with keys: {list(value.keys())}")
+            else:
+                print(f"  - {key}: {type(value).__name__} = {value}")
+        
         # Create ticket if it doesn't exist (first pass)
         if 'ticket_record' not in state:
+            print(f"\n🔧 JIRA WORKFLOW MANAGER: No ticket record found, creating initial ticket...")
             ticket_record = self._create_initial_ticket(state)
             state['ticket_record'] = ticket_record
+            print(f"🔧 JIRA WORKFLOW MANAGER: Initial ticket created: {ticket_record.get('ticket_id')}")
+        else:
+            print(f"\n🔧 JIRA WORKFLOW MANAGER: Existing ticket found: {state['ticket_record'].get('ticket_id')}")
         
         # Get current ticket and workflow state
         ticket_record = state['ticket_record']
         current_status = ticket_record.get('status', 'New')
+        print(f"\n🔧 JIRA WORKFLOW MANAGER: Current ticket status: {current_status}")
         
         # Determine what action to take based on current state
+        print(f"\n🔧 JIRA WORKFLOW MANAGER: Determining workflow action...")
         action = self._determine_workflow_action(state, current_status)
         
         if action:
+            print(f"\n🔧 JIRA WORKFLOW MANAGER: Action determined: {action['action']} -> {action['target_status']}")
             # Execute the action
             success = self._execute_workflow_action(action, ticket_record, state)
             if success:
+                print(f"🔧 JIRA WORKFLOW MANAGER: Action executed successfully")
                 # Update ticket record
                 ticket_record['status'] = action['target_status']
                 ticket_record['updated_at'] = datetime.now()
                 
                 # Add action comment
+                print(f"🔧 JIRA WORKFLOW MANAGER: Adding comment to ticket...")
                 self.jira_client.add_comment(
                     ticket_record['ticket_id'],
                     action['comment']
                 )
+        else:
+            print(f"\n🔧 JIRA WORKFLOW MANAGER: No action needed at this stage")
         
         # Persist updated ticket record
+        print(f"\n🔧 JIRA WORKFLOW MANAGER: Persisting ticket record...")
         self.ticket_persister.persist_ticket(ticket_record)
         
+        print(f"\n🔧 JIRA WORKFLOW MANAGER: Workflow state processing completed")
         return state
     
     def _determine_workflow_action(self, state: ITGraphState, current_status: str) -> Optional[Dict[str, Any]]:
@@ -499,14 +664,32 @@ class JiraWorkflowManager:
     
     def _create_initial_ticket(self, state: ITGraphState) -> TicketRecord:
         """Create initial ticket with status 'New'"""
+        print(f"\n🔧 JIRA WORKFLOW MANAGER: Creating initial ticket...")
+        
         user_request = state.get('user_request', {})
         decision_record = state.get('decision_record', {})
         
+        print(f"🔧 JIRA WORKFLOW MANAGER: User request data:")
+        print(f"  - Title: {user_request.get('title', 'No title')}")
+        print(f"  - Priority: {user_request.get('priority', 'MEDIUM')}")
+        print(f"  - Category: {user_request.get('category', 'general')}")
+        print(f"  - Department: {user_request.get('department', 'Unknown')}")
+        print(f"  - Urgency: {user_request.get('urgency', 'Unknown')}")
+        
+        print(f"\n🔧 JIRA WORKFLOW MANAGER: Decision record data:")
+        print(f"  - Decision: {decision_record.get('decision', 'Unknown')}")
+        print(f"  - Confidence: {decision_record.get('confidence', 'Unknown')}")
+        print(f"  - Needs Human: {decision_record.get('needs_human', 'Unknown')}")
+        
         # Build ticket description
+        print(f"\n🔧 JIRA WORKFLOW MANAGER: Building ticket description...")
         description_builder = TicketDescriptionBuilder()
         description = description_builder.build_description(state)
+        print(f"🔧 JIRA WORKFLOW MANAGER: Description built, length: {len(description)}")
+        print(f"🔧 JIRA WORKFLOW MANAGER: Description preview: {description[:200]}...")
         
         # Create Jira ticket
+        print(f"\n🔧 JIRA WORKFLOW MANAGER: Preparing Jira ticket data...")
         ticket_data = JiraTicketData(
             summary=f"IT Support Request: {user_request.get('title', 'No title')}",
             description=description,
@@ -518,9 +701,19 @@ class JiraWorkflowManager:
             custom_fields={}
         )
         
+        print(f"🔧 JIRA WORKFLOW MANAGER: Ticket data prepared:")
+        print(f"  - Summary: {ticket_data.summary}")
+        print(f"  - Issue Type: {ticket_data.issue_type}")
+        print(f"  - Priority: {ticket_data.priority}")
+        print(f"  - Components: {ticket_data.components}")
+        print(f"  - Labels: {ticket_data.labels}")
+        
+        print(f"\n🔧 JIRA WORKFLOW MANAGER: Calling Jira client to create ticket...")
         jira_ticket_id = self.jira_client.create_ticket(ticket_data)
+        print(f"🔧 JIRA WORKFLOW MANAGER: Jira ticket created with ID: {jira_ticket_id}")
         
         # Create ticket record
+        print(f"\n🔧 JIRA WORKFLOW MANAGER: Creating ticket record...")
         ticket_record = TicketRecord(
             ticket_id=jira_ticket_id,
             status="New",
@@ -542,6 +735,8 @@ class JiraWorkflowManager:
             }]
         )
         
+        print(f"🔧 JIRA WORKFLOW MANAGER: Ticket record created successfully")
+        print(f"🔧 JIRA WORKFLOW MANAGER: Ticket record keys: {list(ticket_record.keys())}")
         return ticket_record
     
 
@@ -557,14 +752,96 @@ def jira_agent_node(state: ITGraphState) -> ITGraphState:
     Returns:
         Updated state with ticket_record populated/updated
     """
+    print("\n" + "="*80)
+    print("🔧 JIRA AGENT NODE: STARTING EXECUTION")
+    print("="*80)
+    
     try:
-        # Initialize Jira components
-        jira_client = JiraClient()
+        print(f"🔧 JIRA AGENT: Starting Jira agent node execution")
+        print(f"🔧 JIRA AGENT: State keys: {list(state.keys())}")
+        print(f"🔧 JIRA AGENT: State content preview:")
+        for key, value in state.items():
+            if isinstance(value, dict):
+                print(f"  - {key}: {type(value).__name__} with keys: {list(value.keys())}")
+            else:
+                print(f"  - {key}: {type(value).__name__} = {value}")
+        
+        # Load Jira configuration from centralized config
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+        try:
+    from config import settings
+except ImportError:
+    # Fallback for when config module is not available
+    class MockSettings:
+        jira_base_url = None
+        jira_user = None
+        jira_token = None
+        jira_project_key = None
+    settings = MockSettings()
+        
+        print(f"\n🔧 JIRA AGENT: Configuration loading...")
+        print(f"  - Config file location: {os.path.join(os.path.dirname(__file__), '..', '..')}")
+        print(f"  - Python path: {sys.path[:3]}...")
+        
+        # NO MOCKS ALLOWED - REAL JIRA ONLY!
+        try:
+            # Try to import the new config system
+            import sys
+            import os
+            sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'config'))
+            from jira_config import get_jira_config
+            
+            jira_config_obj = get_jira_config()
+            
+            if not jira_config_obj.validate():
+                raise Exception("❌ JIRA CREDENTIALS REQUIRED! Configure JIRA in src/config/jira_settings.py or set environment variables. NO MOCKS ALLOWED!")
+            
+            jira_config = {
+                'base_url': jira_config_obj.base_url,
+                'user': jira_config_obj.user,
+                'token': jira_config_obj.token,
+                'project_key': jira_config_obj.project_key,
+                'use_mock': False,  # NEVER USE MOCKS
+                'api_version': jira_config_obj.api_version,
+                'timeout_seconds': jira_config_obj.timeout_seconds,
+                'max_retries': jira_config_obj.max_retries
+            }
+            
+        except ImportError as e:
+            print(f"⚠️  New config system import failed: {e}")
+            # Fallback to old settings method
+            if not settings.jira_base_url or not settings.jira_user or not settings.jira_token:
+                raise Exception("❌ JIRA CREDENTIALS REQUIRED! Set JIRA_BASE_URL, JIRA_USER, and JIRA_TOKEN environment variables. NO MOCKS ALLOWED!")
+            
+            jira_config = {
+                'base_url': settings.jira_base_url,
+                'user': settings.jira_user,
+                'token': settings.jira_token,
+                'project_key': settings.jira_project_key,
+                'use_mock': False  # NEVER USE MOCKS
+            }
+        
+        print(f"\n🔧 JIRA AGENT: Configuration loaded:")
+        print(f"  - Base URL: {jira_config['base_url']}")
+        print(f"  - User: {jira_config['user']}")
+        print(f"  - Token: {'***' if jira_config['token'] else 'NOT SET'}")
+        print(f"  - Project Key: {jira_config['project_key']}")
+        print(f"  - Use Mock: {jira_config['use_mock']}")
+        
+        # Initialize Jira components with configuration
+        print(f"\n🔧 JIRA AGENT: Initializing Jira components...")
+        jira_client = JiraClient(jira_config)
         ticket_persister = TicketRecordPersister()
         workflow_manager = JiraWorkflowManager(jira_client, ticket_persister)
         
+        print(f"\n🔧 JIRA AGENT: Processing workflow state...")
         # Process workflow state and manage Jira ticket throughout pipeline
         updated_state = workflow_manager.process_workflow_state(state)
+        
+        print(f"\n🔧 JIRA AGENT: Workflow state processed")
+        print(f"🔧 JIRA AGENT: Updated state keys: {list(updated_state.keys())}")
         
         # Add Jira metadata
         if 'metadata' not in updated_state:
@@ -575,21 +852,37 @@ def jira_agent_node(state: ITGraphState) -> ITGraphState:
             'status': updated_state.get('ticket_record', {}).get('status'),
             'last_updated': datetime.now().isoformat(),
             'pipeline_managed': True,
-            'workflow_stage': self._get_workflow_stage(updated_state)
+            'workflow_stage': 'ticket_created',
+            'config_loaded': bool(jira_config['base_url']),
+            'use_mock': jira_config['use_mock']
         }
         
+        print(f"\n🔧 JIRA AGENT: Jira metadata added:")
+        print(f"  - Ticket Created: {updated_state['metadata']['jira']['ticket_created']}")
+        print(f"  - Ticket ID: {updated_state['metadata']['jira']['ticket_id']}")
+        print(f"  - Status: {updated_state['metadata']['jira']['status']}")
+        print(f"  - Use Mock: {updated_state['metadata']['jira']['use_mock']}")
+        
+        print(f"\n🔧 JIRA AGENT: Node execution completed successfully")
+        print("="*80)
+        print("🔧 JIRA AGENT NODE: EXECUTION COMPLETED")
+        print("="*80)
         return updated_state
         
     except Exception as e:
         # Handle errors gracefully
+        print(f"\n❌ JIRA AGENT ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        
         error_record = {
             'error_id': f"jira_error_{datetime.now().timestamp()}",
             'timestamp': datetime.now(),
             'error_type': 'jira_error',
             'message': f"Error in Jira agent node: {str(e)}",
-            'stack_trace': None,
+            'stack_trace': traceback.format_exc(),
             'context': {'node': 'jira_agent', 'state_keys': list(state.keys())},
-            'severity': 'medium',
+            'severity': 'high',
             'resolved': False,
             'resolution_notes': None
         }
@@ -598,6 +891,10 @@ def jira_agent_node(state: ITGraphState) -> ITGraphState:
             state['errors'] = []
         state['errors'].append(error_record)
         
+        print(f"\n🔧 JIRA AGENT: Error recorded, returning state with errors")
+        print("="*80)
+        print("🔧 JIRA AGENT NODE: EXECUTION FAILED")
+        print("="*80)
         return state
 
 

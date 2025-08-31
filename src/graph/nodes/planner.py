@@ -528,7 +528,15 @@ def planner_node(state: ITGraphState) -> ITGraphState:
     Returns:
         Updated state with plan_record and potential approval requirements
     """
+    print("\n" + "="*80)
+    print("📋 PLANNER NODE: STARTING EXECUTION")
+    print("="*80)
+    
     try:
+        print(f"📋 PLANNER: Starting planner node execution")
+        print(f"📋 PLANNER: State keys: {list(state.keys())}")
+        print(f"📋 PLANNER: Decision record: {state.get('decision_record', {}).get('decision', 'UNKNOWN')}")
+        
         # Initialize components
         prompt_caller = PlannerPromptCaller()
         json_parser = JSONResponseParser()

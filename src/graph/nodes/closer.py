@@ -314,10 +314,18 @@ class SatisfactionSurveyHandler:
 
 def close_request(state: ITGraphState) -> Dict[str, Any]:
     """Main function to close an IT support request"""
+    print("\n" + "="*80)
+    print("✅ CLOSER NODE: STARTING EXECUTION")
+    print("="*80)
+    
+    print(f"✅ CLOSER: Starting closer node execution")
+    print(f"✅ CLOSER: State keys: {list(state.keys())}")
+    
     completion_handler = CompletionHandler()
     survey_handler = SatisfactionSurveyHandler()
     
     # Complete the request
+    print(f"✅ CLOSER: Completing request...")
     completion_summary = completion_handler.complete_request(state)
     
     # Create satisfaction survey if completed successfully
@@ -325,9 +333,18 @@ def close_request(state: ITGraphState) -> Dict[str, Any]:
     if completion_summary.status == CompletionStatus.COMPLETED:
         survey = survey_handler.create_survey(completion_summary.ticket_id)
     
-    return {
+    result = {
         'completion_summary': completion_summary,
         'satisfaction_survey': survey,
         'status': 'closed',
         'closed_at': datetime.now().isoformat()
     }
+    
+    print(f"\n✅ CLOSER: Request closed successfully")
+    print(f"✅ CLOSER: Status: {result['status']}")
+    print(f"✅ CLOSER: Survey created: {survey is not None}")
+    print("="*80)
+    print("✅ CLOSER NODE: EXECUTION COMPLETED")
+    print("="*80)
+    
+    return result

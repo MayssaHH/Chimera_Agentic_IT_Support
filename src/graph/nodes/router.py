@@ -114,23 +114,41 @@ class ComplexityEvaluator:
         
         return conflicts
     
-    def _compare_policies_for_conflicts(self, doc_a: RetrievedDocument, 
-                                      doc_b: RetrievedDocument) -> Optional[PolicyConflict]:
+    def _compare_policies_for_conflicts(self, doc_a, doc_b) -> Optional[PolicyConflict]:
         """Compare two policies for potential conflicts"""
+        # Handle both TypedDict and dict objects
+        if hasattr(doc_a, 'content'):
+            content_a = doc_a.content
+            title_a = doc_a.title
+            doc_id_a = doc_a.doc_id
+        else:
+            content_a = doc_a.get('content', '')
+            title_a = doc_a.get('title', '')
+            doc_id_a = doc_a.get('doc_id', '')
+            
+        if hasattr(doc_b, 'content'):
+            content_b = doc_b.content
+            title_b = doc_b.title
+            doc_id_b = doc_b.doc_id
+        else:
+            content_b = doc_b.get('content', '')
+            title_b = doc_b.get('title', '')
+            doc_id_b = doc_b.get('doc_id', '')
+        
         # Extract key policy statements
-        statements_a = self._extract_policy_statements(doc_a.content)
-        statements_b = self._extract_policy_statements(doc_b.content)
+        statements_a = self._extract_policy_statements(content_a)
+        statements_b = self._extract_policy_statements(content_b)
         
         # Look for conflicting requirements
         for stmt_a in statements_a:
             for stmt_b in statements_b:
                 if self._statements_conflict(stmt_a, stmt_b):
-                    conflict_id = f"conflict_{hash(f'{doc_a.doc_id}_{doc_b.doc_id}_{stmt_a[:20]}')}"
+                    conflict_id = f"conflict_{hash(f'{doc_id_a}_{doc_id_b}_{stmt_a[:20]}')}"
                     
                     return PolicyConflict(
                         conflict_id=conflict_id,
-                        policy_a=doc_a.title,
-                        policy_b=doc_b.title,
+                        policy_a=title_a,
+                        policy_b=title_b,
                         conflict_description=f"Conflict between '{stmt_a[:100]}' and '{stmt_b[:100]}'",
                         severity="medium",
                         resolution_approach="Requires policy reconciliation or exception approval"
@@ -380,8 +398,8 @@ class RouterPromptCaller:
             },
             'retrieval_results': {
                 'document_count': len(retrieved_docs),
-                'sources': [doc.source for doc in retrieved_docs],
-                'document_types': [doc.document_type for doc in retrieved_docs]
+                'sources': [doc.get('source', 'unknown') for doc in retrieved_docs],
+                'document_types': [doc.get('document_type', 'unknown') for doc in retrieved_docs]
             },
             'model_selection': model_selection
         }
@@ -464,7 +482,14 @@ def router_node(state: ITGraphState) -> ITGraphState:
     Returns:
         Updated state with router_verdict and selected model
     """
+    print("\n" + "="*80)
+    print("🔄 ROUTER NODE: STARTING EXECUTION")
+    print("="*80)
+    
     try:
+        print(f"🔄 ROUTER: Starting router node execution")
+        print(f"🔄 ROUTER: State keys: {list(state.keys())}")
+        
         # Initialize components
         complexity_evaluator = ComplexityEvaluator()
         model_selector = ModelSelector()

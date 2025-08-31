@@ -1,7 +1,7 @@
 """Email client for sending transactional emails via SMTP."""
 
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
@@ -219,14 +219,14 @@ class Emailer:
     
     def send_email(
         self,
-        to: str | List[str],
+        to: Union[str, List[str]],
         subject: str,
         body: str,
         reply_to: Optional[str] = None,
         template_name: Optional[str] = None,
         template_vars: Optional[Dict[str, Any]] = None,
-        cc: Optional[str | List[str]] = None,
-        bcc: Optional[str | List[str]] = None,
+        cc: Optional[Union[str, List[str]]] = None,
+        bcc: Optional[Union[str, List[str]]] = None,
         attachments: Optional[List[str]] = None
     ) -> bool:
         """
@@ -312,7 +312,7 @@ class Emailer:
             logger.error(f"Failed to send email: {e}")
             return False
     
-    def _normalize_emails(self, emails: str | List[str]) -> List[str]:
+    def _normalize_emails(self, emails: Union[str, List[str]]) -> List[str]:
         """Normalize email addresses to list format."""
         if isinstance(emails, str):
             return [email.strip() for email in emails.split(',')]
@@ -390,7 +390,7 @@ class Emailer:
     
     def send_ticket_notification(
         self,
-        to: str | List[str],
+        to: Union[str, List[str]],
         ticket_id: str,
         ticket_summary: str,
         status: str,
@@ -437,7 +437,7 @@ class Emailer:
     
     def send_system_alert(
         self,
-        to: str | List[str],
+        to: Union[str, List[str]],
         alert_type: str,
         message: str,
         severity: str = "medium"

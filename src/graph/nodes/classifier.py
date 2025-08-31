@@ -85,11 +85,11 @@ class ClassifierPromptCaller:
         formatted_docs = []
         for doc in input_data.retrieved_docs:
             formatted_docs.append({
-                'title': doc.title,
-                'content': doc.content[:1000],  # Limit content length
-                'source': doc.source,
-                'document_type': doc.document_type,
-                'relevance_score': doc.relevance_score
+                'title': doc.get('title', 'Unknown Title'),
+                'content': doc.get('content', '')[:1000],  # Limit content length
+                'source': doc.get('source', 'Unknown Source'),
+                'document_type': doc.get('document_type', 'Unknown Type'),
+                'relevance_score': doc.get('relevance_score', 0.0)
             })
         
         # Format past tickets features
@@ -337,7 +337,14 @@ def classifier_node(state: ITGraphState) -> ITGraphState:
     Returns:
         Updated state with decision_record and potential hil_pending
     """
+    print("\n" + "="*80)
+    print("🎯 CLASSIFIER NODE: STARTING EXECUTION")
+    print("="*80)
+    
     try:
+        print(f"🎯 CLASSIFIER: Starting classifier node execution")
+        print(f"🎯 CLASSIFIER: State keys: {list(state.keys())}")
+        
         # Initialize components
         prompt_caller = ClassifierPromptCaller()
         json_parser = JSONResponseParser()
@@ -354,14 +361,19 @@ def classifier_node(state: ITGraphState) -> ITGraphState:
         
         # Get target model from router verdict
         target_model = state.get('router_verdict', {}).get('target_model', 'standard_model_v1')
+        print(f"🎯 CLASSIFIER: Using target model: {target_model}")
         
         # Call classifier LLM
+        print(f"🎯 CLASSIFIER: Calling classifier LLM...")
         llm_response = prompt_caller.call_classifier(input_data, target_model)
+        print(f"🎯 CLASSIFIER: LLM response received, length: {len(llm_response)}")
         
         # Parse JSON response
+        print(f"🎯 CLASSIFIER: Parsing LLM response...")
         parse_success, json_data, validation_errors = json_parser.parse_response(llm_response)
         
         if not parse_success:
+            print(f"❌ CLASSIFIER: Response parsing failed: {validation_errors}")
             # Handle parsing/validation errors
             error_record = {
                 'error_id': f"classification_error_{datetime.now().timestamp()}",
@@ -412,31 +424,47 @@ def classifier_node(state: ITGraphState) -> ITGraphState:
             return state
         
         # Create decision record from parsed data
+        print(f"🎯 CLASSIFIER: Creating decision record from parsed data...")
+        
+        # Handle citations safely
+        citations = []
+        policy_references = []
+        if 'citations' in json_data and json_data['citations']:
+            for citation in json_data['citations']:
+                try:
+                    citations.append(Citation(
+                        source=citation.get('source', 'Unknown'),
+                        text=citation.get('text', ''),
+                        relevance=citation.get('relevance', ''),
+                        document_id=citation.get('document_id', ''),
+                        page_number=citation.get('page_number'),
+                        section=citation.get('section')
+                    ))
+                    policy_references.append(citation.get('source', 'Unknown'))
+                except Exception as e:
+                    print(f"🎯 CLASSIFIER: Warning - skipping malformed citation: {e}")
+        
         decision_record = DecisionRecord(
             decision=DecisionType(json_data['decision']),
-            citations=[
-                Citation(
-                    source=citation['source'],
-                    text=citation['text'],
-                    relevance=citation['relevance'],
-                    document_id=citation.get('document_id', ''),
-                    page_number=citation.get('page_number'),
-                    section=citation.get('section')
-                )
-                for citation in json_data['citations']
-            ],
+            citations=citations,
             confidence=float(json_data['confidence']),
             needs_human=bool(json_data['needs_human']),
             missing_fields=json_data.get('missing_fields', []),
             justification_brief=json_data['justification_brief'],
             decision_date=datetime.now(),
             decision_model=target_model,
-            policy_references=[citation['source'] for citation in json_data['citations']],
+            policy_references=policy_references,
             risk_assessment={
                 'risk_level': 'HIGH' if json_data['decision'] == 'DENIED' else 'MEDIUM',
                 'reason': json_data['justification_brief'][:100]
             }
         )
+        
+        print(f"🎯 CLASSIFIER: Decision record created:")
+        print(f"  - Decision: {decision_record['decision']}")
+        print(f"  - Confidence: {decision_record['confidence']}")
+        print(f"  - Needs Human: {decision_record['needs_human']}")
+        print(f"🎯 CLASSIFIER: DECISION: {decision_record['decision']}")
         
         # Persist decision record
         decision_id = decision_repo.persist_decision(decision_record)
@@ -471,6 +499,12 @@ def classifier_node(state: ITGraphState) -> ITGraphState:
             'model_used': target_model,
             'hil_pending': needs_hil
         }
+        
+        print(f"\n🎯 CLASSIFIER: Classification completed successfully")
+        print(f"🎯 CLASSIFIER: Final decision: {decision_record['decision']}")
+        print("="*80)
+        print("🎯 CLASSIFIER NODE: EXECUTION COMPLETED")
+        print("="*80)
         
         return state
         

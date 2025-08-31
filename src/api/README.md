@@ -25,12 +25,12 @@ pip install -r requirements.txt
 python server.py
 ```
 
-The server will start on `http://localhost:8000`
+The server will start on `http://localhost:8002`
 
 ### 3. Access API Documentation
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+- **Swagger UI**: http://localhost:8002/docs
+- **ReDoc**: http://localhost:8002/redoc
 
 ## API Endpoints
 

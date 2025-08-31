@@ -521,15 +521,33 @@ def it_agent_node(state: ITGraphState) -> ITGraphState:
     Returns:
         Updated state with execution results and outcome
     """
+    print("\n" + "="*80)
+    print("🛠️ IT AGENT NODE: STARTING EXECUTION")
+    print("="*80)
+    
     try:
+        print(f"🛠️ IT AGENT: Starting IT agent node execution")
+        print(f"🛠️ IT AGENT: State keys: {list(state.keys())}")
+        print(f"🛠️ IT AGENT: Plan record: {state.get('plan_record', {}).get('plan_id', 'UNKNOWN')}")
+        
         # Initialize IT Agent
         agent = ITAgentNode(dry_run=False)  # Set to True for testing
         
         # Execute plan
+        print(f"🛠️ IT AGENT: Executing plan...")
         updated_state, outcome = agent.execute_plan(state)
         
         # Add outcome to state
         updated_state["it_outcome"] = outcome
+        
+        # Add execution result for workflow routing
+        updated_state["execution_result"] = {
+            "status": "completed" if outcome == ExecutionOutcome.EXECUTED else "partially_completed",
+            "outcome": str(outcome),
+            "execution_timestamp": datetime.now().isoformat(),
+            "executed_steps": len([s for s in updated_state.get("execution_results", []) if s.get("success")]),
+            "manual_steps_remaining": len(updated_state.get("user_guide", {}).get("steps", []))
+        }
         
         # Add execution metadata
         if "metadata" not in updated_state:
@@ -540,6 +558,13 @@ def it_agent_node(state: ITGraphState) -> ITGraphState:
             "executed_steps": len([s for s in updated_state.get("execution_results", []) if s.get("success")]),
             "manual_steps_remaining": len(updated_state.get("user_guide", {}).get("steps", []))
         }
+        
+        print(f"\n🛠️ IT AGENT: Plan execution completed")
+        print(f"🛠️ IT AGENT: Outcome: {outcome}")
+        print(f"🛠️ IT AGENT: Executed steps: {updated_state['metadata']['it_agent_execution']['executed_steps']}")
+        print("="*80)
+        print("🛠️ IT AGENT NODE: EXECUTION COMPLETED")
+        print("="*80)
         
         return updated_state
         

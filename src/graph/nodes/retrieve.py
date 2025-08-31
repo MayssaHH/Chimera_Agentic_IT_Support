@@ -331,10 +331,18 @@ def retrieve_node(state: ITGraphState) -> ITGraphState:
     Returns:
         Updated state with retrieved documents and citations
     """
+    print("\n" + "="*80)
+    print("📚 RETRIEVE NODE: STARTING EXECUTION")
+    print("="*80)
+    
     try:
+        print(f"📚 RETRIEVE: Starting retrieve node execution")
+        print(f"📚 RETRIEVE: State keys: {list(state.keys())}")
+        
         # Extract request information
         user_request = state.get('user_request', {})
         query = f"{user_request.get('title', '')} {user_request.get('description', '')}"
+        print(f"📚 RETRIEVE: Query: {query}")
         
         # Initialize components
         retriever = DocumentRetriever()
@@ -369,13 +377,17 @@ def retrieve_node(state: ITGraphState) -> ITGraphState:
         # Convert to RetrievedDocument format
         retrieved_docs = []
         for doc in unique_documents:
+            # Safely calculate relevance score
+            doc_scores = [score.score for score in relevance_scores 
+                         if score.section_id.startswith(doc['doc_id'])]
+            relevance_score = max(doc_scores) if doc_scores else 0.5  # Default score if no sections
+            
             retrieved_doc = RetrievedDocument(
                 doc_id=doc['doc_id'],
                 title=doc['title'],
                 content=doc['content'],
                 source=doc['source'],
-                relevance_score=max(score.score for score in relevance_scores 
-                                  if score.section_id.startswith(doc['doc_id'])),
+                relevance_score=relevance_score,
                 retrieval_date=datetime.now(),
                 document_type=doc['document_type'],
                 version=doc['version'],

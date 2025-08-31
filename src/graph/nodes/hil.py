@@ -148,7 +148,7 @@ class HILQuestionGenerator:
             }
         }
     
-    def generate_question(self, hil_item: HILPending, 
+    def generate_question(self, hil_item, 
                          decision_record: DecisionRecord) -> HILQuestion:
         """Generate appropriate question based on HIL item type"""
         question_type = self._determine_question_type(hil_item, decision_record)
@@ -163,41 +163,71 @@ class HILQuestionGenerator:
         # Determine assignee based on priority and type
         assigned_to = self._determine_assignee(hil_item, decision_record)
         
+        # Handle both TypedDict and dict objects for priority and other attributes
+        if hasattr(hil_item, 'priority'):
+            priority = hil_item.priority
+            item_id = hil_item.item_id
+            escalation_path = hil_item.escalation_path
+            timeout_hours = hil_item.timeout_hours
+        else:
+            priority = hil_item.get('priority', 'MEDIUM')
+            item_id = hil_item.get('item_id', 'unknown')
+            escalation_path = hil_item.get('escalation_path', [])
+            timeout_hours = hil_item.get('timeout_hours', 24)
+        
         # Calculate due date based on priority
-        due_date = self._calculate_due_date(hil_item.priority)
+        due_date = self._calculate_due_date(priority)
         
         return HILQuestion(
             question_id=question_id,
-            ticket_id=hil_item.item_id.split('_')[1],  # Extract ticket ID from HIL item ID
+            ticket_id=item_id.split('_')[1] if '_' in item_id else item_id,  # Extract ticket ID from HIL item ID
             question_type=question_type,
             title=template['title'],
             description=template['description'],
             context=context,
             options=template['options'],
             assigned_to=assigned_to,
-            priority=hil_item.priority,
+            priority=priority,
             created_at=datetime.now(),
             due_date=due_date,
             status=HILStatus.PENDING,
-            escalation_path=hil_item.escalation_path,
-            timeout_hours=hil_item.timeout_hours
+            escalation_path=escalation_path,
+            timeout_hours=timeout_hours
         )
     
-    def _determine_question_type(self, hil_item: HILPending, 
+    def _determine_question_type(self, hil_item, 
                                 decision_record: DecisionRecord) -> HILQuestionType:
         """Determine the type of question needed"""
-        if 'classification' in hil_item.type.lower():
+        # Handle both TypedDict and dict objects
+        if hasattr(hil_item, 'type'):
+            item_type = hil_item.type
+        else:
+            item_type = hil_item.get('type', 'classification')
+            
+        if 'classification' in item_type.lower():
             return HILQuestionType.CLASSIFICATION_REVIEW
-        elif 'policy' in hil_item.type.lower():
+        elif 'policy' in item_type.lower():
             return HILQuestionType.POLICY_INTERPRETATION
-        elif 'risk' in hil_item.type.lower():
+        elif 'risk' in item_type.lower():
             return HILQuestionType.RISK_ASSESSMENT
         else:
             return HILQuestionType.CLASSIFICATION_REVIEW
     
-    def _create_question_context(self, hil_item: HILPending, 
+    def _create_question_context(self, hil_item, 
                                 decision_record: DecisionRecord) -> Dict[str, Any]:
         """Create context information for the question"""
+        # Handle both TypedDict and dict objects
+        if hasattr(hil_item, 'description'):
+            description = hil_item.description
+            priority = hil_item.priority
+            escalation_path = hil_item.escalation_path
+            timeout_hours = hil_item.timeout_hours
+        else:
+            description = hil_item.get('description', '')
+            priority = hil_item.get('priority', 'MEDIUM')
+            escalation_path = hil_item.get('escalation_path', [])
+            timeout_hours = hil_item.get('timeout_hours', 24)
+            
         return {
             'request_summary': {
                 'title': decision_record.get('justification_brief', '')[:200],
@@ -205,21 +235,28 @@ class HILQuestionGenerator:
                 'confidence': decision_record.get('confidence', 0.0),
                 'citations_count': len(decision_record.get('citations', []))
             },
-            'hil_reason': hil_item.description,
-            'priority': hil_item.priority,
-            'escalation_path': hil_item.escalation_path,
-            'timeout_hours': hil_item.timeout_hours
+            'hil_reason': description,
+            'priority': priority,
+            'escalation_path': escalation_path,
+            'timeout_hours': timeout_hours
         }
     
-    def _determine_assignee(self, hil_item: HILPending, 
+    def _determine_assignee(self, hil_item, 
                            decision_record: DecisionRecord) -> str:
         """Determine who should review this question"""
-        if hil_item.assigned_to != 'unassigned':
-            return hil_item.assigned_to
+        # Handle both TypedDict and dict objects
+        if hasattr(hil_item, 'assigned_to'):
+            assigned_to = hil_item.assigned_to
+            priority = hil_item.priority
+        else:
+            assigned_to = hil_item.get('assigned_to', 'unassigned')
+            priority = hil_item.get('priority', 'MEDIUM')
+            
+        if assigned_to != 'unassigned':
+            return assigned_to
         
         # Auto-assign based on decision type and priority
         decision = decision_record.get('decision', '')
-        priority = hil_item.priority
         
         if decision == 'DENIED' or priority == 'CRITICAL':
             return 'senior_analyst'
@@ -268,10 +305,16 @@ class HILWorkflowManager:
             
             # Record pause information
             ticket_id = question.ticket_id
+            # Handle both TypedDict and dict objects
+            if hasattr(hil_item, 'item_id'):
+                item_id = hil_item.item_id
+            else:
+                item_id = hil_item.get('item_id', 'unknown')
+                
             self.paused_workflows[ticket_id] = {
                 'pause_time': datetime.now(),
-                'hil_items': [hil_item.item_id for hil_item in hil_pending],
-                'questions': [question.question_id for question in [question]],
+                'hil_items': [item_id],
+                'questions': [question.question_id],
                 'status': 'waiting_for_human_review'
             }
         
@@ -301,7 +344,15 @@ def hil_node(state: ITGraphState) -> ITGraphState:
     Returns:
         Updated state (workflow continues if no HIL needed)
     """
+    print("\n" + "="*80)
+    print("👥 HIL NODE: STARTING EXECUTION")
+    print("="*80)
+    
     try:
+        print(f"👥 HIL: Starting HIL node execution")
+        print(f"👥 HIL: State keys: {list(state.keys())}")
+        print(f"👥 HIL: HIL pending items: {len(state.get('hil_pending', []))}")
+        
         # Initialize HIL components
         queue = HILQueue()
         workflow_manager = HILWorkflowManager(queue)
@@ -310,6 +361,7 @@ def hil_node(state: ITGraphState) -> ITGraphState:
         workflow_paused = workflow_manager.pause_workflow(state)
         
         if workflow_paused:
+            print(f"👥 HIL: Workflow paused for human review")
             # Add HIL pause metadata
             if 'metadata' not in state:
                 state['metadata'] = {}
@@ -326,6 +378,13 @@ def hil_node(state: ITGraphState) -> ITGraphState:
             state['workflow_status']['status'] = 'PAUSED'
             state['workflow_status']['reason'] = 'Human review required'
             state['workflow_status']['paused_at'] = datetime.now().isoformat()
+        else:
+            print(f"👥 HIL: No human review needed, workflow continues")
+        
+        print(f"\n👥 HIL: HIL processing completed")
+        print("="*80)
+        print("👥 HIL NODE: EXECUTION COMPLETED")
+        print("="*80)
         
         return state
         
