@@ -1,4 +1,4 @@
-﻿using Application.UsseCases.HandleEmployeeRequest;
+﻿using Application.UseCases.HandleEmployeeRequest;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

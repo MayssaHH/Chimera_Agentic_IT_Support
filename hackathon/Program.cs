@@ -3,6 +3,8 @@ using Application.Ports.Persistence;
 using External;
 using Microsoft.EntityFrameworkCore;
 using Persistence;
+using MediatR;
+using Application.UseCases.HandleEmployeeRequest; // for type discovery
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +15,13 @@ builder.Services.AddSwaggerGen();
 // EF Core
 builder.Services.AddDbContext<AppDbContext>(opts =>
     opts.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(HandleEmployeeRequestHandler).Assembly));
+
+builder.Services.AddScoped<IJiraAgent, NoopJiraAgent>();
+builder.Services.AddScoped<IExecutorAgent, NoopExecutorAgent>();
 
 
 // Persistence port -> Infra implementation
