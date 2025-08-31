@@ -88,13 +88,70 @@ The following environment variables need to be configured in your `.env` file:
 
 ```
 local-it-support/
-├── local_it_support/     # Main package
+├── src/                  # Source code
+│   ├── graph/           # Workflow graph components
+│   │   ├── nodes/       # Graph execution nodes
+│   │   │   ├── it_agent.py      # IT Agent execution node
+│   │   │   ├── classifier.py    # Request classification
+│   │   │   ├── router.py        # Model routing
+│   │   │   ├── jira_agent.py    # JIRA integration
+│   │   │   └── ...              # Other nodes
+│   │   └── state.py     # State management
+│   ├── tools/           # External service integrations
+│   │   ├── emailer.py   # Email functionality
+│   │   ├── jira.py      # JIRA API client
+│   │   └── ...          # Other tools
+│   └── prompts/         # LLM prompt templates
 ├── tests/                # Test files
 ├── pyproject.toml        # Poetry configuration
 ├── Makefile             # Build and run commands
 ├── .env.example         # Environment variables template
 └── README.md            # This file
 ```
+
+## IT Agent Node
+
+The IT Agent node (`src/graph/nodes/it_agent.py`) is responsible for executing what is executable from the execution plan and returning the appropriate outcome status.
+
+### Features
+
+- **Automated Execution**: Executes steps that can be automated using available tools
+- **Email Integration**: Sends approval emails and notifications via SMTP
+- **JIRA Integration**: Updates ticket fields and adds comments
+- **User Guide Generation**: Creates step-by-step instructions for manual steps
+- **Outcome Classification**: Returns one of three possible outcomes:
+  - `executed`: All steps completed automatically
+  - `awaiting_employee`: Employee action required
+  - `awaiting_manager`: Manager approval required
+
+### Usage
+
+```python
+from src.graph.nodes.it_agent import it_agent_node, ExecutionOutcome
+
+# Execute the IT agent
+result_state = it_agent_node(workflow_state)
+
+# Check the outcome
+outcome = result_state["it_outcome"]
+if outcome == ExecutionOutcome.AWAITING_EMPLOYEE:
+    # Handle employee action required
+    user_guide = result_state.get("user_guide")
+elif outcome == ExecutionOutcome.AWAITING_MANAGER:
+    # Handle manager approval required
+    pass
+else:
+    # All steps executed successfully
+    execution_results = result_state.get("execution_results", [])
+```
+
+### Execution Flow
+
+1. **Plan Analysis**: Analyzes the execution plan to identify executable vs. manual steps
+2. **Tool Execution**: Uses appropriate tools (email, JIRA, system) to execute automated steps
+3. **User Guide Creation**: Generates comprehensive user guides for manual steps
+4. **Status Updates**: Updates ticket status based on remaining actions
+5. **Outcome Determination**: Returns the appropriate execution outcome
 
 ## API Endpoints
 
