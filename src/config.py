@@ -39,6 +39,23 @@ class Settings(BaseSettings):
     router_model: str = "mistral:7b"
     escalation_model: str = "mixtral:8x7b"
     
+    # LLM Configuration
+    classifier_temperature: float = 0.2
+    classifier_max_tokens: int = 1000
+    planner_temperature: float = 0.3
+    planner_max_tokens: int = 2000
+    it_temperature: float = 0.2
+    it_max_tokens: int = 1000
+    router_temperature: float = 0.2
+    router_max_tokens: int = 1000
+    escalation_temperature: float = 0.4
+    escalation_max_tokens: int = 3000
+    
+    # Retry Configuration
+    llm_max_retries: int = 3
+    llm_retry_delay_base: float = 1.0
+    llm_retry_delay_max: float = 10.0
+    
     # Database Configuration
     database_url: str = "sqlite:///./local_it_support.db"
     
