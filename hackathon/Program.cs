@@ -1,30 +1,29 @@
-using System.Net.Http.Headers;
-using Application.Ports;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
-// Application layer (handlers, ports)
+// Application
 using Application.UseCases.HandleEmployeeRequest;
 using Application.Ports.Persistence;
 using Application.Ports;
 
-// Infrastructure implementations
-using Persistence;                 // AppDbContext, EfTicketRepository
-using External;     // HttpClassifierAgent, HttpPlannerAgent, HttpJiraAgent, HttpExecutorAgent
+// Infrastructure
+using Persistence;                  // AppDbContext, EfTicketRepository
+using External;      // HttpClassifierAgent, HttpPlannerAgent, HttpJiraAgent, HttpExecutorAgent
 
 var builder = WebApplication.CreateBuilder(args);
 var cfg = builder.Configuration;
 
+// ---------- Services ----------
 
 // Controllers + Swagger
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// CORS (adjust origin as needed)
+// CORS (adjust origin to match your frontend)
 const string Cors = "Front";
 builder.Services.AddCors(o => o.AddPolicy(Cors, p =>
-    p.WithOrigins("http://localhost:3000")   // your frontend origin
+    p.WithOrigins("http://localhost:3000")
      .AllowAnyHeader()
      .AllowAnyMethod()));
 
@@ -37,25 +36,23 @@ builder.Services.AddDbContext<AppDbContext>(opts =>
 // Repositories
 builder.Services.AddScoped<ITicketRepository, EfTicketRepository>();
 
-// MediatR (register Application handlers)
+// MediatR (scan Application assembly for handlers)
 builder.Services.AddMediatR(m =>
     m.RegisterServicesFromAssembly(typeof(HandleEmployeeRequestHandler).Assembly));
 
-// Agents base URL / key from config
+// ---------- Agents: connect to Python service ----------
 var agentsBase = cfg["Agents:BaseUrl"] ?? "http://localhost:8000";
 var agentsApiKey = cfg["Agents:ApiKey"];
 
-// Helper to set base + optional x-api-key
 void ConfigureAgentClient(HttpClient c)
 {
     c.BaseAddress = new Uri(agentsBase);
     if (!string.IsNullOrWhiteSpace(agentsApiKey))
         c.DefaultRequestHeaders.Add("x-api-key", agentsApiKey);
-    c.Timeout = TimeSpan.FromSeconds(10);
-    c.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+    c.Timeout = TimeSpan.FromSeconds(15);
 }
 
-// Typed HTTP clients to Python service (Option A)
+// Typed HTTP clients (adapters in Infrastructure/External)
 builder.Services.AddHttpClient<IClassifierAgent, HttpClassifierAgent>(ConfigureAgentClient);
 builder.Services.AddHttpClient<IPlannerAgent,   HttpPlannerAgent>(ConfigureAgentClient);
 builder.Services.AddHttpClient<IJiraAgent,      HttpJiraAgent>(ConfigureAgentClient);
@@ -64,26 +61,10 @@ builder.Services.AddHttpClient<IExecutorAgent,  HttpExecutorAgent>(ConfigureAgen
 var app = builder.Build();
 
 // ---------- Pipeline ----------
-
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseCors(Cors);
 app.MapControllers();
-
-// Simple health check for agents (optional)
-app.MapGet("/health/agents", async (IHttpClientFactory factory) =>
-{
-    try
-    {
-        var http = factory.CreateClient(nameof(IClassifierAgent)); // any of the typed clients will do
-        var resp = await http.GetAsync("/health");
-        return Results.Json(new { ok = resp.IsSuccessStatusCode, status = (int)resp.StatusCode });
-    }
-    catch (Exception ex)
-    {
-        return Results.Json(new { ok = false, error = ex.Message }, statusCode: 503);
-    }
-});
 
 app.Run();
