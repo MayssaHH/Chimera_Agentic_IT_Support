@@ -79,7 +79,7 @@ export default function TicketsPage() {
             <p className="page-tagline">Fast triage with <span className="tag-strong">clear signals</span></p>
           </div>
           <div className="header-actions">
-            <button className="ghost-btn" onClick={goHome}>← Back to SOC</button>
+            <button className="ghost-btn" onClick={() => router.push('/request')}>Back to Request</button>
           </div>
         </div>
 
