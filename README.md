@@ -1,5 +1,5 @@
-![Alt text](images/login.png)
-![Alt text](images/request.png)
-![Alt text](images/tickets.png)
-![Alt text](images/logs.png)
+![Image 1](frontend/app/images/login.png)
+![Image 2](frontend/app/images/request.png)
+![Image 3](frontend/app/images/tickets.png)
+![Image 3](frontend/app/images/logs.png)
 
